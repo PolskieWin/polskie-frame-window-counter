@@ -26,6 +26,12 @@ protected:
     CCMenuItemToggler* m_10plusToggle = nullptr;
     CCMenuItemToggler* m_msHzToggle = nullptr;
 
+    // New 99.9% precision & MS toggles
+    CCMenuItemToggler* m_bucketMSToggle = nullptr;
+    CCMenuItemToggler* m_lastMSToggle = nullptr;
+    CCMenuItemToggler* m_cpsToggle = nullptr;
+    CCMenuItemToggler* m_gravityMiniToggle = nullptr;
+
     std::vector<std::string> m_macroFiles;
 
     bool init(float width, float height);
@@ -37,6 +43,10 @@ protected:
     void onToggleHigher(CCObject* sender);
     void onToggle10Plus(CCObject* sender);
     void onToggleMsHz(CCObject* sender);
+    void onToggleBucketMS(CCObject* sender);
+    void onToggleLastMS(CCObject* sender);
+    void onToggleCPS(CCObject* sender);
+    void onToggleGravityMini(CCObject* sender);
 
     void onIncreaseFPS(CCObject* sender);
     void onDecreaseFPS(CCObject* sender);

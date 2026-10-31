@@ -42,8 +42,8 @@ void FrameWindowOverlay::setupBuckets() {
     m_buckets.push_back({ "7-8:",  7,  8,    { 89,  201, 215 }, nullptr }); // #59C9D7 Light Blue / Cyan
     m_buckets.push_back({ "5-6:",  5,  6,    { 119, 223, 145 }, nullptr }); // #77DF91 Lime / Mint Green
     m_buckets.push_back({ "3-4:",  3,  4,    { 208, 213, 59  }, nullptr }); // #D0D53B Pastel Yellow
-    m_buckets.push_back({ "1-2:",  1,  2,    { 232, 160, 32  }, nullptr }); // #E8A020 Amber / Orange
-    m_buckets.push_back({ "0-1:",  0,  1,    { 239, 79,  80  }, nullptr }); // #EF4F50 Frame Perfect Pink/Red
+    m_buckets.push_back({ "1-2:",  1,  2,    { 232, 160, 32  }, nullptr }); // #E8A020 Amber / Orange (8.33ms)
+    m_buckets.push_back({ "0-1:",  0,  1,    { 239, 79,  80  }, nullptr }); // #EF4F50 Frame Perfect Pink/Red (4.17ms)
     m_buckets.push_back({ "10+:",  11, 9999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Violet (optional overflow)
 }
 
@@ -71,6 +71,15 @@ bool FrameWindowOverlay::init() {
         std::string txt = fmt::format("{:<6}0", bucket.label);
         bucket.labelNode = createPusabLabel(txt.c_str(), 0.30f * scale, bucket.color, 0, 0);
     }
+
+    // Last click timing & exact MS indicator (e.g. "FP: 1f (4.17ms)!" or "LAST: 2f (8.33ms)")
+    m_lastClickLabel = createPusabLabel("LAST: --", 0.28f * scale, { 245, 245, 245 }, 0, 0);
+
+    // Real-time CPS counter for fast spam & swift clicks
+    m_cpsLabel = createPusabLabel("CPS: 0.0  MAX: 0.0", 0.27f * scale, { 120, 220, 255 }, 0, 0);
+
+    // Mini gamemode and gravity multiplier status
+    m_gravLabel = createPusabLabel("MODE: CUBE | GRAV: NORMAL", 0.26f * scale, { 150, 255, 180 }, 0, 0);
 
     // CBF Status (Frame Perfect!)
     m_cbfLabel = createPusabLabel("CBF: 0", 0.28f * scale, { 239, 79, 150 }, 0, 0);
@@ -122,6 +131,12 @@ void FrameWindowOverlay::updateDisplay() {
     bool showMsHz = mod->getSettingValue<bool>("show-ms-hz");
     bool showGamemode = mod->getSettingValue<bool>("show-gamemode");
 
+    // New 99.9% precision & MS features
+    bool showBucketMS = mod->getSettingValue<bool>("show-bucket-ms");
+    bool showLastMS = mod->getSettingValue<bool>("show-last-ms");
+    bool showCPS = mod->getSettingValue<bool>("show-cps");
+    bool showGravityMini = mod->getSettingValue<bool>("show-gravity-mini");
+
     if (m_titleLabel) m_titleLabel->setVisible(showTitle);
 
     auto const& dist = analyzer->getWindowDistribution();
@@ -164,7 +179,17 @@ void FrameWindowOverlay::updateDisplay() {
             }
         }
 
-        bucket.labelNode->setString(fmt::format("{:<6}{}", bucket.label, count).c_str());
+        if (showBucketMS) {
+            double ms = (bucket.minFrames >= 11)
+                ? analyzer->framesToMS(11)
+                : analyzer->framesToMS(bucket.maxFrames);
+            std::string msStr = (bucket.minFrames >= 11)
+                ? fmt::format("{:.1f}ms+", ms)
+                : fmt::format("{:.1f}ms", ms);
+            bucket.labelNode->setString(fmt::format("{:<6}{} ({})", bucket.label, count, msStr).c_str());
+        } else {
+            bucket.labelNode->setString(fmt::format("{:<6}{}", bucket.label, count).c_str());
+        }
 
         // Bright color on non-zero, slightly dimmed on zero (like NaN GD)
         if (count > 0) {
@@ -175,6 +200,40 @@ void FrameWindowOverlay::updateDisplay() {
                 static_cast<GLubyte>(bucket.color.g * 2 / 3),
                 static_cast<GLubyte>(bucket.color.b * 2 / 3)
             });
+        }
+    }
+
+    // Last click MS & timing indicator
+    if (m_lastClickLabel) {
+        m_lastClickLabel->setVisible(showLastMS);
+        if (showLastMS) {
+            m_lastClickLabel->setString(analyzer->getLastClickText().c_str());
+            if (analyzer->getLastClickWindow() <= 1 && analyzer->getTotalClicks() > 0) {
+                m_lastClickLabel->setColor({ 255, 255, 0 }); // Bright Yellow Frame Perfect!
+            } else {
+                m_lastClickLabel->setColor({ 245, 245, 245 });
+            }
+        }
+    }
+
+    // Real-time CPS for fast spam & swift clicks
+    if (m_cpsLabel) {
+        m_cpsLabel->setVisible(showCPS);
+        if (showCPS) {
+            m_cpsLabel->setString(analyzer->getCPSText().c_str());
+            if (analyzer->getCurrentCPS() >= 12.0) {
+                m_cpsLabel->setColor({ 255, 120, 50 }); // Orange for fast spam bursts!
+            } else {
+                m_cpsLabel->setColor({ 120, 220, 255 });
+            }
+        }
+    }
+
+    // Gamemode, Mini Mode & Gravity status
+    if (m_gravLabel) {
+        m_gravLabel->setVisible(showGravityMini);
+        if (showGravityMini) {
+            m_gravLabel->setString(analyzer->getGravityMiniText().c_str());
         }
     }
 
@@ -224,7 +283,7 @@ void FrameWindowOverlay::updateDisplay() {
     // Gamemode
     if (showGamemode) {
         m_modeLabel->setVisible(true);
-        std::string modeStr = FrameWindowAnalyzer::gamemodeName(analyzer->getCurrentGamemode());
+        std::string modeStr = FrameWindowAnalyzer::gamemodeName(analyzer->getCurrentGamemode(), analyzer->getGameState().isMini);
         std::transform(modeStr.begin(), modeStr.end(), modeStr.begin(), ::toupper);
         m_modeLabel->setString(fmt::format("MODE: {}", modeStr).c_str());
     } else {
@@ -244,6 +303,9 @@ void FrameWindowOverlay::updatePosition() {
     bool showCBF = mod->getSettingValue<bool>("show-cbf");
     bool showRings = mod->getSettingValue<bool>("show-ring-fp");
     bool showGamemode = mod->getSettingValue<bool>("show-gamemode");
+    bool showLastMS = mod->getSettingValue<bool>("show-last-ms");
+    bool showCPS = mod->getSettingValue<bool>("show-cps");
+    bool showGravityMini = mod->getSettingValue<bool>("show-gravity-mini");
     int opacity = mod->getSettingValue<int64_t>("overlay-opacity");
 
     auto winSize = CCDirector::get()->getWinSize();
@@ -253,6 +315,9 @@ void FrameWindowOverlay::updatePosition() {
     for (auto& bucket : m_buckets) {
         if (bucket.labelNode) bucket.labelNode->setScale(0.30f * scale);
     }
+    if (m_lastClickLabel) m_lastClickLabel->setScale(0.28f * scale);
+    if (m_cpsLabel) m_cpsLabel->setScale(0.27f * scale);
+    if (m_gravLabel) m_gravLabel->setScale(0.26f * scale);
     if (m_cbfLabel) m_cbfLabel->setScale(0.28f * scale);
     if (m_ringLabel) m_ringLabel->setScale(0.27f * scale);
     if (m_msLabel) m_msLabel->setScale(0.27f * scale);
@@ -270,6 +335,9 @@ void FrameWindowOverlay::updatePosition() {
         }
     }
 
+    if (showLastMS && m_lastClickLabel && m_lastClickLabel->isVisible()) visibleLabels.push_back(m_lastClickLabel);
+    if (showCPS && m_cpsLabel && m_cpsLabel->isVisible()) visibleLabels.push_back(m_cpsLabel);
+    if (showGravityMini && m_gravLabel && m_gravLabel->isVisible()) visibleLabels.push_back(m_gravLabel);
     if (showCBF && m_cbfLabel && m_cbfLabel->isVisible()) visibleLabels.push_back(m_cbfLabel);
     if (showRings && m_ringLabel && m_ringLabel->isVisible()) visibleLabels.push_back(m_ringLabel);
     if (showMsHz && m_msLabel && m_msLabel->isVisible()) {
@@ -290,7 +358,7 @@ void FrameWindowOverlay::updatePosition() {
     bool isRight = (position == "top-right" || position == "bottom-right");
     bool isBottom = (position == "bottom-left" || position == "bottom-right");
 
-    // Strictly pinned to top-left screen corner by default
+    // Strictly pinned to top-left screen corner
     float startX = isRight ? (winSize.width - 8.0f) : 8.0f;
     float startY = isBottom ? (8.0f + (visibleLabels.size() * lineH)) : (winSize.height - 8.0f);
 

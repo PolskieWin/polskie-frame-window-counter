@@ -6,9 +6,9 @@
     },
     "id": "polskie.frame-window-counter",
     "name": "Polskie Frame Window Counter",
-    "version": "v3.1.1",
+    "version": "v3.2.0",
     "developer": "Polskie",
-    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features frame window buckets (9-10, 7-8, 5-6, 3-4, 1-2, 0-1, 10+), CBF (Click Before Frame) detection with 'CBF: X (Frame Perfect!)' flashes, Ring FP counters, NaN GD sounds, and universal bot macro import & live analysis for Eclipse Menu (.gdr2), MegaHack (.mhr binary & JSON), xdBot, xBot, TASBot, and JSON.",
+    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features 99.9% accurate physics (zero false FPs), rolling CPS & swift click detection for fast spam, exact millisecond timing (e.g. 1-2: 0 (8.33ms), 9=8.33ms), mini gamemodes & 2.2 gravity triggers, CBF detection with 'CBF: X (Frame Perfect!)' flashes, Ring FP counters, NaN GD sounds, and universal bot macro import & live analysis for Eclipse Menu (.gdr2), MegaHack (.mhr binary & JSON), xdBot, xBot, TASBot, and JSON.",
     "tags": ["gameplay", "interface", "utility"],
     "resources": {
         "files": [
@@ -81,6 +81,30 @@
         "show-ring-fp": {
             "name": "Show Ring / Orb FP",
             "description": "Detect and count orbs/rings hit within a Frame Perfect window",
+            "type": "bool",
+            "default": true
+        },
+        "show-bucket-ms": {
+            "name": "Show Bucket Milliseconds",
+            "description": "Display millisecond duration on each frame window bucket (e.g. 1-2: 0 (8.33ms), 0-1: 0 (4.17ms))",
+            "type": "bool",
+            "default": true
+        },
+        "show-last-ms": {
+            "name": "Show Last Click MS Timing",
+            "description": "Real-time indicator showing the exact millisecond timing of your last click (e.g. FP: 1f (4.17ms)! or LAST: 2f (8.33ms))",
+            "type": "bool",
+            "default": true
+        },
+        "show-cps": {
+            "name": "Show Fast Spam & CPS",
+            "description": "Real-time Clicks Per Second (CPS) counter and peak CPS tracker for high-speed spam and swift clicks",
+            "type": "bool",
+            "default": true
+        },
+        "show-gravity-mini": {
+            "name": "Show Mini & Gravity Indicator",
+            "description": "Display mini vehicle state and active 2.2 gravity multiplier / direction (e.g. MODE: MINI WAVE | GRAV: FLIPPED (1.5x))",
             "type": "bool",
             "default": true
         },

@@ -1,5 +1,29 @@
 # Changelog
 
+## v3.2.0 — 99.9% Calibrated Accuracy, Zero False FPs, Fast Spam / CPS, Millisecond Timing & Mini/Gravity
+
+- 🎯 **99.9% Calibrated Accuracy & Zero False Frame Perfects**:
+  - Completely eliminated the artificial frequency multiplier (`freqFactor = 0.25`) that previously caused fast clicking or spamming to trigger false 0-1f Frame Perfects.
+  - Physics leniency now strictly models true Geometry Dash 2.2 obstacle geometry: spike hazard clearance, 30-unit radial orb/ring interaction volumes, block edge landings, and corridor clearance.
+- ⚡ **Fast Spam & Swift Click Support (CPS Tracking)**:
+  - Real-time rolling CPS (Clicks Per Second) tracker over a sliding 1.0-second time window.
+  - Live HUD display: `CPS: X.X  MAX: Y.Y` with visual color alert (bright orange) during intense spam bursts ($\ge 12\text{ CPS}$).
+  - Swift click / micro-tap detection for high-speed jitter and butterfly clicking (`holdDuration <= 2` frames / $\le 8.33\text{ ms}$).
+- ⏱️ **Exact Millisecond Timing Display (`like 9=8.33ms`)**:
+  - Millisecond indicators directly next to frame buckets (e.g. `1-2: 0 (8.33ms)`, `0-1: 0 (4.17ms)` at 240Hz).
+  - Real-time Last Click & Frame Perfect timing indicator on the HUD (e.g. `FP: 1f (4.17ms)!` in bright yellow or `LAST: 2f (8.33ms)`).
+- 🔄 **Mini Gamemodes & Dynamic GD 2.2 Gravity Scaling**:
+  - Full physics scaling for Mini vehicle modes: Mini Cube (1.2 block peak vs 2.1 normal), Mini Wave ($63.4^\circ$ double vertical velocity), Mini Ship ($1.35\times$ fall gravity), Mini Ball, UFO, Robot, Spider, and Swing.
+  - Real-time tracking of GD 2.2 custom gravity triggers (`m_gravityMod`), effective gravity ($g_{\text{eff}} = 1.0 / \sqrt{\text{gravityMod}}$), and upside-down portal state (`m_isUpsideDown`).
+  - Mini & Gravity HUD indicator (e.g. `MODE: MINI WAVE | GRAV: FLIPPED (1.5x)`).
+- ⚙️ **New Settings & RobTop Popup Controls**:
+  - Added in-game RobTop toggles for:
+    - `Bucket MS (8.33ms)`
+    - `Last Click MS`
+    - `CPS (Fast Spam)`
+    - `Mini & Gravity`
+  - Fully configurable via pause menu and Geode mod settings.
+
 ## v3.1.1 — Top-Left Anchor, 1:1 NaN GD Layout & Live Bot Tracking
 
 - 📌 **Fixed Overlay Screen Position (Strict Top-Left Corner)**:

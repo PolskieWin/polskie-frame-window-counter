@@ -6,7 +6,7 @@
 
 FWCSettingsPopup* FWCSettingsPopup::create() {
     auto ret = new FWCSettingsPopup();
-    if (ret && ret->init(400.f, 290.f)) {
+    if (ret && ret->init(420.f, 325.f)) {
         ret->autorelease();
         return ret;
     }
@@ -20,8 +20,8 @@ CCMenuItemToggler* FWCSettingsPopup::createRobTopToggle(
 ) {
     auto onSpr = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
     auto offSpr = CCSprite::createWithSpriteFrameName("GJ_checkOff_001.png");
-    onSpr->setScale(0.55f);
-    offSpr->setScale(0.55f);
+    onSpr->setScale(0.52f);
+    offSpr->setScale(0.52f);
 
     auto toggle = CCMenuItemToggler::create(offSpr, onSpr, this, callback);
     toggle->toggle(defaultVal);
@@ -30,9 +30,9 @@ CCMenuItemToggler* FWCSettingsPopup::createRobTopToggle(
 
     // Pusab font for label
     auto lbl = CCLabelBMFont::create(label.c_str(), "bigFont.fnt");
-    lbl->setScale(0.24f);
+    lbl->setScale(0.23f);
     lbl->setAnchorPoint({ 0.f, 0.5f });
-    lbl->setPosition({ x + 15.f, y });
+    lbl->setPosition({ x + 14.f, y });
     m_mainLayer->addChild(lbl);
 
     return toggle;
@@ -50,8 +50,8 @@ bool FWCSettingsPopup::init(float width, float height) {
     m_mainLayer->addChild(m_mainMenu);
 
     float centerX = width / 2.0f;
-    float startY = height - 45.0f;
-    float rowH = 22.f;
+    float startY = height - 42.0f;
+    float rowH = 19.5f;
 
     // ── Row 1: Enable & Status ──
     m_enabledToggle = createRobTopToggle(
@@ -61,19 +61,20 @@ bool FWCSettingsPopup::init(float width, float height) {
     );
 
     m_statusLabel = CCLabelBMFont::create("Made by Polskie", "goldFont.fnt");
-    m_statusLabel->setScale(0.35f);
+    m_statusLabel->setScale(0.33f);
     m_statusLabel->setAnchorPoint({ 1.0f, 0.5f });
     m_statusLabel->setPosition({ width - 35.f, startY });
     m_mainLayer->addChild(m_statusLabel);
-    startY -= rowH + 2.f;
-
-    // ── Section: Features ──
-    auto featTitle = CCLabelBMFont::create("-- SETTINGS & OPTIONS --", "goldFont.fnt");
-    featTitle->setScale(0.33f);
-    featTitle->setPosition({ centerX, startY });
-    m_mainLayer->addChild(featTitle);
     startY -= rowH;
 
+    // ── Section: Features ──
+    auto featTitle = CCLabelBMFont::create("-- 1:1 HUD & PRECISE MS --", "goldFont.fnt");
+    featTitle->setScale(0.30f);
+    featTitle->setPosition({ centerX, startY });
+    m_mainLayer->addChild(featTitle);
+    startY -= rowH - 2.f;
+
+    // Row 2: Sounds & CBF
     m_soundToggle = createRobTopToggle(
         "FP Sound (NaN GD)", mod->getSettingValue<bool>("fp-sound-enabled"),
         menu_selector(FWCSettingsPopup::onToggleSound),
@@ -83,72 +84,102 @@ bool FWCSettingsPopup::init(float width, float height) {
     m_cbfToggle = createRobTopToggle(
         "CBF Indicator", mod->getSettingValue<bool>("show-cbf"),
         menu_selector(FWCSettingsPopup::onToggleCBF),
-        215.f, startY
+        220.f, startY
     );
     startY -= rowH;
 
+    // Row 3: Ring FP & Bucket MS (e.g. 8.33ms)
     m_ringToggle = createRobTopToggle(
         "Ring / Orb FP", mod->getSettingValue<bool>("show-ring-fp"),
         menu_selector(FWCSettingsPopup::onToggleRing),
         35.f, startY
     );
 
-    m_msHzToggle = createRobTopToggle(
-        "Show MS & Hz", mod->getSettingValue<bool>("show-ms-hz"),
-        menu_selector(FWCSettingsPopup::onToggleMsHz),
-        215.f, startY
+    m_bucketMSToggle = createRobTopToggle(
+        "Bucket MS (8.33ms)", mod->getSettingValue<bool>("show-bucket-ms"),
+        menu_selector(FWCSettingsPopup::onToggleBucketMS),
+        220.f, startY
     );
     startY -= rowH;
 
-    m_higherToggle = createRobTopToggle(
-        "Higher Windows (9-10)", mod->getSettingValue<bool>("show-higher-windows"),
-        menu_selector(FWCSettingsPopup::onToggleHigher),
+    // Row 4: Last Click MS Timing & CPS
+    m_lastMSToggle = createRobTopToggle(
+        "Last Click MS", mod->getSettingValue<bool>("show-last-ms"),
+        menu_selector(FWCSettingsPopup::onToggleLastMS),
         35.f, startY
     );
 
+    m_cpsToggle = createRobTopToggle(
+        "CPS (Fast Spam)", mod->getSettingValue<bool>("show-cps"),
+        menu_selector(FWCSettingsPopup::onToggleCPS),
+        220.f, startY
+    );
+    startY -= rowH;
+
+    // Row 5: Mini & Gravity & Higher Windows
+    m_gravityMiniToggle = createRobTopToggle(
+        "Mini & Gravity", mod->getSettingValue<bool>("show-gravity-mini"),
+        menu_selector(FWCSettingsPopup::onToggleGravityMini),
+        35.f, startY
+    );
+
+    m_higherToggle = createRobTopToggle(
+        "Higher Win (9-10)", mod->getSettingValue<bool>("show-higher-windows"),
+        menu_selector(FWCSettingsPopup::onToggleHigher),
+        220.f, startY
+    );
+    startY -= rowH;
+
+    // Row 6: 10+ Bucket & Show MS/Hz
     m_10plusToggle = createRobTopToggle(
         "Show 10+ Bucket", mod->getSettingValue<bool>("show-10plus-only"),
         menu_selector(FWCSettingsPopup::onToggle10Plus),
-        215.f, startY
+        35.f, startY
     );
-    startY -= rowH + 4.f;
+
+    m_msHzToggle = createRobTopToggle(
+        "Show MS & Hz", mod->getSettingValue<bool>("show-ms-hz"),
+        menu_selector(FWCSettingsPopup::onToggleMsHz),
+        220.f, startY
+    );
+    startY -= rowH + 2.f;
 
     // ── FPS Selector ──
     auto fpsTitle = CCLabelBMFont::create("Analysis FPS:", "bigFont.fnt");
-    fpsTitle->setScale(0.26f);
+    fpsTitle->setScale(0.24f);
     fpsTitle->setAnchorPoint({ 0.f, 0.5f });
     fpsTitle->setPosition({ 35.f, startY });
     m_mainLayer->addChild(fpsTitle);
 
     auto leftSpr = CCSprite::createWithSpriteFrameName("edit_leftBtn_001.png");
-    leftSpr->setScale(0.55f);
+    leftSpr->setScale(0.52f);
     auto leftBtn = CCMenuItemSpriteExtra::create(leftSpr, this, menu_selector(FWCSettingsPopup::onDecreaseFPS));
     leftBtn->setPosition({ 150.f, startY });
     m_mainMenu->addChild(leftBtn);
 
     int curFps = static_cast<int>(mod->getSettingValue<int64_t>("analysis-fps"));
     m_fpsLabel = CCLabelBMFont::create(fmt::format("{}Hz", curFps).c_str(), "bigFont.fnt");
-    m_fpsLabel->setScale(0.33f);
+    m_fpsLabel->setScale(0.30f);
     m_fpsLabel->setPosition({ 185.f, startY });
     m_mainLayer->addChild(m_fpsLabel);
 
     auto rightSpr = CCSprite::createWithSpriteFrameName("edit_rightBtn_001.png");
-    rightSpr->setScale(0.55f);
+    rightSpr->setScale(0.52f);
     auto rightBtn = CCMenuItemSpriteExtra::create(rightSpr, this, menu_selector(FWCSettingsPopup::onIncreaseFPS));
     rightBtn->setPosition({ 220.f, startY });
     m_mainMenu->addChild(rightBtn);
 
-    startY -= rowH + 6.f;
+    startY -= rowH + 4.f;
 
-    // ── Section: Bot Macro Import (Eclipse, MegaHack, JSON) ──
+    // ── Section: Bot Macro Import ──
     auto macroTitle = CCLabelBMFont::create("-- BOT MACRO IMPORT (ECLIPSE / MEGAHACK / JSON) --", "goldFont.fnt");
-    macroTitle->setScale(0.28f);
+    macroTitle->setScale(0.26f);
     macroTitle->setPosition({ centerX, startY });
     m_mainLayer->addChild(macroTitle);
-    startY -= rowH;
+    startY -= rowH - 2.f;
 
     m_macroInfoLabel = CCLabelBMFont::create("No macro loaded", "chatFont.fnt");
-    m_macroInfoLabel->setScale(0.42f);
+    m_macroInfoLabel->setScale(0.40f);
     m_macroInfoLabel->setPosition({ centerX, startY });
     m_macroInfoLabel->setColor({ 180, 180, 180 });
     m_mainLayer->addChild(m_macroInfoLabel);
@@ -163,25 +194,25 @@ bool FWCSettingsPopup::init(float width, float height) {
     startY -= rowH + 2.f;
 
     // Buttons
-    auto pickSpr = ButtonSprite::create("Select File...", "bigFont.fnt", "GJ_button_01.png", 0.60f);
+    auto pickSpr = ButtonSprite::create("Select File...", "bigFont.fnt", "GJ_button_01.png", 0.58f);
     auto pickBtn = CCMenuItemSpriteExtra::create(pickSpr, this, menu_selector(FWCSettingsPopup::onPickMacroFile));
     pickBtn->setPosition({ 75.f, startY });
     pickBtn->setScale(0.65f);
     m_mainMenu->addChild(pickBtn);
 
-    auto scanSpr = ButtonSprite::create("Scan Folder", "bigFont.fnt", "GJ_button_02.png", 0.60f);
+    auto scanSpr = ButtonSprite::create("Scan Folder", "bigFont.fnt", "GJ_button_02.png", 0.58f);
     auto scanBtn = CCMenuItemSpriteExtra::create(scanSpr, this, menu_selector(FWCSettingsPopup::onScanMacroFolder));
     scanBtn->setPosition({ 180.f, startY });
     scanBtn->setScale(0.65f);
     m_mainMenu->addChild(scanBtn);
 
-    auto clearSpr = ButtonSprite::create("Clear", "bigFont.fnt", "GJ_button_04.png", 0.60f);
+    auto clearSpr = ButtonSprite::create("Clear", "bigFont.fnt", "GJ_button_04.png", 0.58f);
     auto clearBtn = CCMenuItemSpriteExtra::create(clearSpr, this, menu_selector(FWCSettingsPopup::onClearMacro));
     clearBtn->setPosition({ 275.f, startY });
     clearBtn->setScale(0.65f);
     m_mainMenu->addChild(clearBtn);
 
-    auto resetSpr = ButtonSprite::create("Reset", "bigFont.fnt", "GJ_button_06.png", 0.60f);
+    auto resetSpr = ButtonSprite::create("Reset", "bigFont.fnt", "GJ_button_06.png", 0.58f);
     auto resetBtn = CCMenuItemSpriteExtra::create(resetSpr, this, menu_selector(FWCSettingsPopup::onResetData));
     resetBtn->setPosition({ 350.f, startY });
     resetBtn->setScale(0.65f);
@@ -229,6 +260,30 @@ void FWCSettingsPopup::onToggle10Plus(CCObject*) {
 void FWCSettingsPopup::onToggleMsHz(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-ms-hz", !mod->getSettingValue<bool>("show-ms-hz"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
+}
+
+void FWCSettingsPopup::onToggleBucketMS(CCObject*) {
+    auto mod = Mod::get();
+    mod->setSettingValue("show-bucket-ms", !mod->getSettingValue<bool>("show-bucket-ms"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
+}
+
+void FWCSettingsPopup::onToggleLastMS(CCObject*) {
+    auto mod = Mod::get();
+    mod->setSettingValue("show-last-ms", !mod->getSettingValue<bool>("show-last-ms"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
+}
+
+void FWCSettingsPopup::onToggleCPS(CCObject*) {
+    auto mod = Mod::get();
+    mod->setSettingValue("show-cps", !mod->getSettingValue<bool>("show-cps"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
+}
+
+void FWCSettingsPopup::onToggleGravityMini(CCObject*) {
+    auto mod = Mod::get();
+    mod->setSettingValue("show-gravity-mini", !mod->getSettingValue<bool>("show-gravity-mini"));
     if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
