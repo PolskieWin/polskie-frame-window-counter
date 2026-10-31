@@ -166,6 +166,10 @@ private:
     double m_levelTime = 0.0;
     double m_lastClickTime = 0.0;
     int m_lastClickFrame = 0;
+    int m_lastPressFrame = 0;
+    int m_lastReleaseFrame = 0;
+    int m_lastHoldDuration = 0;
+    float m_lastRingDistance = 0.0f;
     float m_levelLength = 0.0f;
     int m_currentFrame = 0;
 

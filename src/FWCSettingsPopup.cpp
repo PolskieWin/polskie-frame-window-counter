@@ -250,11 +250,14 @@ void FWCSettingsPopup::onPickMacroFile(CCObject*) {
     });
 
     async::spawn(
-        file::pick(file::FilePickMode::Open, options),
-        [this](Result<std::filesystem::path> result) {
+        file::pick(file::PickMode::OpenFile, options),
+        [this](file::PickResult result) {
             if (result.isOk()) {
-                auto path = result.unwrap().string();
-                this->loadMacroFile(path);
+                auto opt = result.unwrap();
+                if (opt.has_value()) {
+                    std::string pickedPath = opt.value().string();
+                    this->loadMacroFile(pickedPath);
+                }
             }
         }
     );
