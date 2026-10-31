@@ -14,11 +14,8 @@ endif()
 # Add Geode SDK
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode_sdk)
 
-# Setup the Geode mod
-setup_geode_mod(${PROJECT_NAME})
-
-# Add all source files
-target_sources(${PROJECT_NAME} PRIVATE
+# Define the mod library target
+add_library(${PROJECT_NAME} SHARED
     src/main.cpp
     src/FrameWindowAnalyzer.cpp
     src/FrameWindowOverlay.cpp
@@ -26,5 +23,8 @@ target_sources(${PROJECT_NAME} PRIVATE
     src/FWCSettingsPopup.cpp
     src/FPSoundManager.cpp
 )
+
+# Setup Geode mod
+setup_geode_mod(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)

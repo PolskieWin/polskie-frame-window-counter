@@ -6,7 +6,7 @@
  * - NaN GD & Razy's Frame Windows layout with Pusab font (bigFont.fnt)
  * - Frame window buckets: 0-1, 1-2, 2-3, 3-4, 4-5, 5-6, 6-8, 8-10, 10+
  * - CBF count with "CBF: X (Frame Perfect!)" dynamic status
- * - Ring / Orb Frame Perfect detection (ringJump hook)
+ * - Ring / Orb Frame Perfect detection (ringJump hook & state tracking)
  * - Frame-perfect sounds (NaN GD style)
  * - Eclipse Menu (.gdr2) macro import ("esplice") + MegaHack (.mhr) + JSON
  * - Full RobTop-style UI settings popup
@@ -34,8 +34,8 @@ static FrameWindowOverlay* g_overlay = nullptr;
 // ============================================================
 class $modify(FWCPlayLayer, PlayLayer) {
 
-    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
-        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) {
+    bool init(GJGameLevel* level, bool dontCreateObjects) {
+        if (!PlayLayer::init(level, dontCreateObjects)) {
             return false;
         }
 
@@ -104,7 +104,7 @@ class $modify(FWCPlayLayer, PlayLayer) {
         auto analyzer = FrameWindowAnalyzer::get();
         analyzer->setTracking(false);
 
-        log::info("[Polskie FWC] Poziom ukończony! Kliknięć: {}, CBF: {}, Ring FP: {}",
+        log::info("[Polskie FWC] Poziom ukonczony! Klikniec: {}, CBF: {}, Ring FP: {}",
             analyzer->getTotalClicks(),
             analyzer->getCBFCount(),
             analyzer->getRingFPCount()
@@ -129,8 +129,9 @@ class $modify(FWCPlayLayer, PlayLayer) {
 };
 
 // ============================================================
-// PlayerObject hook — Ring / Orb Frame Perfect detection
+// PlayerObject hook — Ring / Orb Frame Perfect detection (Windows)
 // ============================================================
+#ifndef GEODE_IS_ANDROID
 class $modify(FWCPlayerObject, PlayerObject) {
 
     void ringJump(RingObject* ring, bool skipCheck) {
@@ -140,13 +141,13 @@ class $modify(FWCPlayerObject, PlayerObject) {
         if (!mod->getSettingValue<bool>("enabled")) return;
         if (!mod->getSettingValue<bool>("show-ring-fp")) return;
 
-        // Register ring interaction in analyzer
         auto analyzer = FrameWindowAnalyzer::get();
         if (analyzer->isTracking()) {
             analyzer->onRingJump(this, ring);
         }
     }
 };
+#endif
 
 // ============================================================
 // GJBaseGameLayer hooks — Live Input Tracking (Works with Bots!)
@@ -170,6 +171,13 @@ class $modify(FWCGameLayer, GJBaseGameLayer) {
         PlayerObject* player = isPlayer1 ? this->m_player1 : this->m_player2;
 
         if (player) {
+            #ifdef GEODE_IS_ANDROID
+            // On Android, check player's ring state
+            if (player->m_ringJumpedSincePress) {
+                analyzer->onRingJump(player, nullptr);
+            }
+            #endif
+
             analyzer->onPlayerInput(down, player, playerNum);
 
             // If it was frame-perfect, trigger flash in overlay
@@ -227,6 +235,6 @@ class $modify(FWCPauseLayer, PauseLayer) {
 // Mod entry point
 // ============================================================
 $on_mod(Loaded) {
-    log::info("[Polskie Frame Window Counter v3] Załadowano pomyślnie! Autor: Polskie");
-    log::info("[Polskie FWC] Obsługa: Eclipse Menu (.gdr2), MegaHack (.mhr), JSON");
+    log::info("[Polskie Frame Window Counter v3] Zaladowano pomyslnie! Autor: Polskie");
+    log::info("[Polskie FWC] Obsluga: Eclipse Menu (.gdr2), MegaHack (.mhr), JSON");
 }
