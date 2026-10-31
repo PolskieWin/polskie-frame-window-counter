@@ -34,3 +34,4 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host ""
     Write-Host "[ERROR] Blad podczas kompilacji. Kod bledu: $LASTEXITCODE" -ForegroundColor Red
 }
+

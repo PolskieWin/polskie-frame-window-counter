@@ -29,8 +29,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
           combine: true
-          use-cpm-cache: false
-          configure-args: "-DGEODE_DISABLE_FMT_CONSTEVAL=ON -DFMT_USE_CONSTEVAL=0 -DFMT_OS=OFF -DFMT_DOCS=OFF -DFMT_TEST=OFF"
 
   combine:
     needs: build
