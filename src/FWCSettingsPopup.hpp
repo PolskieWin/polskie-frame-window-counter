@@ -11,7 +11,7 @@ using namespace geode::prelude;
  * FWCSettingsPopup — RobTop style GUI with Pusab font
  * Made by Polskie
  */
-class FWCSettingsPopup : public Popup<> {
+class FWCSettingsPopup : public Popup {
 protected:
     CCMenu* m_mainMenu = nullptr;
     CCLabelBMFont* m_statusLabel = nullptr;
@@ -28,7 +28,7 @@ protected:
 
     std::vector<std::string> m_macroFiles;
 
-    bool setup() override;
+    bool init(float width, float height);
 
     void onToggleEnabled(CCObject* sender);
     void onToggleSound(CCObject* sender);

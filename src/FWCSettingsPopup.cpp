@@ -3,7 +3,7 @@
 
 FWCSettingsPopup* FWCSettingsPopup::create() {
     auto ret = new FWCSettingsPopup();
-    if (ret && ret->initAnchored(390.f, 290.f)) {
+    if (ret && ret->init(390.f, 290.f)) {
         ret->autorelease();
         return ret;
     }
@@ -35,7 +35,9 @@ CCMenuItemToggler* FWCSettingsPopup::createRobTopToggle(
     return toggle;
 }
 
-bool FWCSettingsPopup::setup() {
+bool FWCSettingsPopup::init(float width, float height) {
+    if (!Popup::init(width, height)) return false;
+
     auto mod = Mod::get();
 
     this->setTitle("Polskie Frame Windows");

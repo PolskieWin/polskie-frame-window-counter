@@ -29,7 +29,6 @@ jobs:
         with:
           target: ${{ matrix.target }}
           combine: true
-          bindings-ref: f67afb7bf09baf885da8613e96f608a7a86ba4d9
 
   combine:
     needs: build
