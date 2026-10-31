@@ -34,8 +34,8 @@ static FrameWindowOverlay* g_overlay = nullptr;
 // ============================================================
 class $modify(FWCPlayLayer, PlayLayer) {
 
-    bool init(GJGameLevel* level, bool dontCreateObjects) {
-        if (!PlayLayer::init(level, dontCreateObjects)) {
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        if (!PlayLayer::init(level, useReplay, dontCreateObjects)) {
             return false;
         }
 
@@ -171,13 +171,6 @@ class $modify(FWCGameLayer, GJBaseGameLayer) {
         PlayerObject* player = isPlayer1 ? this->m_player1 : this->m_player2;
 
         if (player) {
-            #ifdef GEODE_IS_ANDROID
-            // On Android, check player's ring state
-            if (player->m_ringJumpedSincePress) {
-                analyzer->onRingJump(player, nullptr);
-            }
-            #endif
-
             analyzer->onPlayerInput(down, player, playerNum);
 
             // If it was frame-perfect, trigger flash in overlay
