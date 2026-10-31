@@ -49,10 +49,10 @@ FrameWindowAnalyzer::Gamemode FrameWindowAnalyzer::detectGamemode(PlayerObject* 
     if (player->m_isDart)         return Gamemode::WAVE;
     if (player->m_isShip)         return Gamemode::SHIP;
     if (player->m_isBall)         return Gamemode::BALL;
-    if (player->m_isUFO)          return Gamemode::UFO;
+    if (player->m_isBird)         return Gamemode::UFO;
     if (player->m_isRobot)        return Gamemode::ROBOT;
     if (player->m_isSpider)       return Gamemode::SPIDER;
-    if (player->m_isSwingCopter)  return Gamemode::SWING;
+    if (player->m_isSwing)        return Gamemode::SWING;
 
     return Gamemode::CUBE;
 }
@@ -88,8 +88,8 @@ void FrameWindowAnalyzer::captureGameState(PlayerObject* player) {
     m_gameState.isDart = player->m_isDart;
     m_gameState.isRobot = player->m_isRobot;
     m_gameState.isSpider = player->m_isSpider;
-    m_gameState.isSwing = player->m_isSwingCopter;
-    m_gameState.isUFO = player->m_isUFO;
+    m_gameState.isSwing = player->m_isSwing;
+    m_gameState.isUFO = player->m_isBird;
     m_gameState.isMini = player->m_vehicleSize < 0.8f;
     m_gameState.isUpsideDown = player->m_isUpsideDown;
     m_gameState.isOnGround = player->m_isOnGround;
