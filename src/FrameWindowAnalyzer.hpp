@@ -16,11 +16,10 @@ using namespace geode::prelude;
  * - Ring/orb frame-perfect detection
  * - Per-gamemode click statistics
  * - All FPS analysis for all gamemodes
- * - Bot macro import support
+ * - Universal bot macro import support (Eclipse .gdr2, MegaHack .mhr, JSON)
  */
 class FrameWindowAnalyzer {
 public:
-    // All GD gamemodes
     enum class Gamemode {
         CUBE, SHIP, BALL, UFO, WAVE, ROBOT, SPIDER, SWING,
         COUNT
@@ -54,7 +53,6 @@ public:
         Gamemode gamemode;      // Which gamemode this click was in
     };
 
-    // Per-gamemode statistics
     struct GamemodeStats {
         int totalClicks = 0;
         int cbfCount = 0;       // Frame-perfect clicks
@@ -87,9 +85,10 @@ public:
 
     void reset();
 
-    // Live gameplay
+    // Live gameplay input tracking
     void onUpdate(float dt, PlayerObject* player, float levelLength);
     void onPlayerInput(bool isPress, PlayerObject* player, int playerNum = 1);
+    bool hasRecordedThisFrame(int player, bool isPress) const;
 
     // Ring/orb interaction tracking
     void onRingJump(PlayerObject* player, RingObject* ring);
@@ -97,7 +96,7 @@ public:
     // Macro analysis
     void analyzeMacro(MacroParser::MacroData const& macro);
 
-    // === Results ===
+    // Results
     std::map<int, int> const& getWindowDistribution() const;
     int getTotalClicks() const;
     double getPrecisionScore() const;
@@ -105,9 +104,9 @@ public:
     int getTightestWindow() const;
 
     // CBF (Click Before Frame = Frame Perfect)
-    int getCBFCount() const;       // Total frame-perfect clicks
-    bool isLastClickCBF() const;   // Was the most recent click frame-perfect?
-    std::string getCBFText() const; // "CBF: X (Frame Perfect!)" or "CBF: X"
+    int getCBFCount() const;
+    bool isLastClickCBF() const;
+    std::string getCBFText() const;
 
     // Ring frame-perfect
     int getRingFPCount() const;
@@ -118,7 +117,7 @@ public:
     GamemodeStats const& getGamemodeStats(Gamemode mode) const;
     Gamemode getCurrentGamemode() const;
 
-    // Settings
+    // Settings & state
     int getAnalysisFPS() const;
     void setAnalysisFPS(int fps);
     std::vector<ClickData> const& getClicks() const;
@@ -144,7 +143,6 @@ private:
     std::map<int, int> m_windowDistribution;
     GameState m_gameState;
 
-    // Per-gamemode tracking
     GamemodeStats m_gamemodeStats[static_cast<int>(Gamemode::COUNT)];
     static GamemodeStats s_emptyStats;
 
@@ -153,14 +151,14 @@ private:
     bool m_isTracking = false;
 
     // CBF tracking
-    int m_cbfCount = 0;            // Total frame-perfect clicks
+    int m_cbfCount = 0;
     bool m_lastClickCBF = false;
 
     // Ring FP tracking
     int m_ringFPCount = 0;
     int m_totalRingHits = 0;
     bool m_lastRingFP = false;
-    bool m_pendingRingHit = false;  // Flag set when ringJump is called
+    bool m_pendingRingHit = false;
 
     // Timing
     double m_levelTime = 0.0;

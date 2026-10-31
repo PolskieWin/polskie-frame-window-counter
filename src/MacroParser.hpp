@@ -9,19 +9,24 @@ using namespace geode::prelude;
 /**
  * MacroParser
  * 
- * Supports:
- * - Eclipse Menu / GDR2 (.gdr2, .gdr) — binary replay format ("esplice")
- * - MegaHack Replay (.mhr, .mhr.json) — binary and JSON
- * - Generic JSON / TASBot / xdBot / ReplayBot (.json)
- * - Plain text / CSV macros (.txt)
+ * Comprehensive universal parser for Geometry Dash macros & replays:
+ * - Eclipse Menu (.gdr2, .gdr) — binary LEB128 replay format
+ * - MegaHack Replay Binary (.mhr) — 'HACKPRO\x07' format
+ * - MegaHack Replay JSON (.mhr.json, .mhr)
+ * - xdBot (.txt / .csv / .json)
+ * - xBot (.txt / .csv)
+ * - TASBot (.json)
+ * - ReplayBot (.replay, .rply)
+ * - Generic JSON replay formats
+ * - Plain text / CSV macros
  */
 class MacroParser {
 public:
     struct MacroInput {
-        int frame;          // Frame index
-        bool isPress;       // true = press, false = release
-        int player;         // 1 = player1, 2 = player2
-        int button;         // 1 = jump, 2 = left, 3 = right
+        int frame = 0;          // Frame index
+        bool isPress = true;    // true = press, false = release
+        int player = 1;         // 1 = player1, 2 = player2
+        int button = 1;         // 1 = jump, 2 = left, 3 = right
     };
 
     struct MacroData {
@@ -39,7 +44,11 @@ public:
         ECLIPSE_GDR2,   // Eclipse Menu .gdr2 / .gdr
         MHR_BINARY,     // MegaHack Replay Binary (.mhr)
         MHR_JSON,       // MegaHack Replay JSON (.mhr.json)
-        JSON,           // TASBot / generic JSON
+        XDBOT,          // xdBot .txt / .csv / .json
+        XBOT,           // xBot .txt / .csv
+        TASBOT,         // TASBot .json
+        REPLAYBOT,      // ReplayBot .replay
+        JSON,           // Generic JSON
         PLAIN_TEXT,     // Text / CSV format
         UNKNOWN
     };
@@ -49,6 +58,11 @@ public:
 
     static MacroData parseEclipseGDR2(std::string const& path);
     static MacroData parseMHRBinary(std::string const& path);
+    static MacroData parseMHRJson(std::string const& path);
+    static MacroData parseXdBot(std::string const& path);
+    static MacroData parseXbot(std::string const& path);
+    static MacroData parseTasBot(std::string const& path);
+    static MacroData parseReplayBot(std::string const& path);
     static MacroData parseJsonMacro(std::string const& path);
     static MacroData parsePlainText(std::string const& path);
 

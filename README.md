@@ -13,7 +13,7 @@ An authentic 1:1 replica of the **NaN GD** & **Razy's Frame Windows** counter cr
 
 Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows** (64-bit):
 
-👉 **[Download Polskie Frame Window Counter v3.1.0 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
+👉 **[Download Polskie Frame Window Counter v3.1.1 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
 
 ---
 
@@ -64,5 +64,5 @@ Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows
 ## 👨‍💻 Author
 
 - **Developer**: **Polskie**
-- **Version**: `v3.1.0`
+- **Version**: `v3.1.1`
 - **Geode SDK**: `5.11.2`

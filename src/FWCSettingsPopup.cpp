@@ -1,4 +1,5 @@
 #include "FWCSettingsPopup.hpp"
+#include "FrameWindowOverlay.hpp"
 #include <fmt/format.h>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/async.hpp>
@@ -192,36 +193,43 @@ bool FWCSettingsPopup::init(float width, float height) {
 void FWCSettingsPopup::onToggleEnabled(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("enabled", !mod->getSettingValue<bool>("enabled"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggleSound(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("fp-sound-enabled", !mod->getSettingValue<bool>("fp-sound-enabled"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggleCBF(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-cbf", !mod->getSettingValue<bool>("show-cbf"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggleRing(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-ring-fp", !mod->getSettingValue<bool>("show-ring-fp"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggleHigher(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-higher-windows", !mod->getSettingValue<bool>("show-higher-windows"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggle10Plus(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-10plus-only", !mod->getSettingValue<bool>("show-10plus-only"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onToggleMsHz(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-ms-hz", !mod->getSettingValue<bool>("show-ms-hz"));
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onIncreaseFPS(CCObject*) {
@@ -231,6 +239,7 @@ void FWCSettingsPopup::onIncreaseFPS(CCObject*) {
     mod->setSettingValue("analysis-fps", static_cast<int64_t>(fps));
     m_fpsLabel->setString(fmt::format("{}Hz", fps).c_str());
     FrameWindowAnalyzer::get()->setAnalysisFPS(fps);
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onDecreaseFPS(CCObject*) {
@@ -240,13 +249,14 @@ void FWCSettingsPopup::onDecreaseFPS(CCObject*) {
     mod->setSettingValue("analysis-fps", static_cast<int64_t>(fps));
     m_fpsLabel->setString(fmt::format("{}Hz", fps).c_str());
     FrameWindowAnalyzer::get()->setAnalysisFPS(fps);
+    if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
 void FWCSettingsPopup::onPickMacroFile(CCObject*) {
     file::FilePickOptions options;
     options.filters.push_back({
         "Geometry Dash Replays & Macros",
-        { "*.gdr2", "*.gdr", "*.mhr", "*.json", "*.txt" }
+        { "*.gdr2", "*.gdr", "*.mhr", "*.mhr.json", "*.json", "*.txt", "*.csv", "*.rply" }
     });
 
     async::spawn(
@@ -285,7 +295,7 @@ void FWCSettingsPopup::onScanMacroFolder(CCObject*) {
             "- /sdcard/GeometryDash/macros/\n"
             "- /storage/emulated/0/Download/\n"
 #endif
-            "\nSupported: Eclipse (.gdr2), MegaHack (.mhr), JSON",
+            "\nSupported: Eclipse (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON",
             "OK"
         )->show();
         return;
@@ -297,9 +307,14 @@ void FWCSettingsPopup::onScanMacroFolder(CCObject*) {
 
 void FWCSettingsPopup::loadMacroFile(std::string const& path) {
     auto data = MacroParser::parse(path);
-    if (data.valid) {
+    if (data.valid && !data.inputs.empty()) {
         auto analyzer = FrameWindowAnalyzer::get();
         analyzer->analyzeMacro(data);
+
+        if (auto overlay = FrameWindowOverlay::get()) {
+            overlay->updateDisplay();
+            overlay->updatePosition();
+        }
 
         std::string filename = std::filesystem::path(path).filename().string();
         m_macroInfoLabel->setString(
@@ -332,9 +347,9 @@ void FWCSettingsPopup::loadMacroFile(std::string const& path) {
     } else {
         FLAlertLayer::create(
             "Macro Load Error",
-            fmt::format("Failed to parse macro file:\n{}\n\nDetails: {}",
+            fmt::format("Failed to parse macro file:\n{}\n\nDetails: {}\n\nSupported: Eclipse (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON",
                 std::filesystem::path(path).filename().string(),
-                data.error
+                data.error.empty() ? "No valid click actions found" : data.error
             ).c_str(),
             "OK"
         )->show();
@@ -344,6 +359,10 @@ void FWCSettingsPopup::loadMacroFile(std::string const& path) {
 void FWCSettingsPopup::onClearMacro(CCObject*) {
     auto analyzer = FrameWindowAnalyzer::get();
     analyzer->reset();
+    if (auto overlay = FrameWindowOverlay::get()) {
+        overlay->updateDisplay();
+        overlay->updatePosition();
+    }
     m_macroInfoLabel->setString("No macro loaded");
     m_macroInfoLabel->setColor({ 180, 180, 180 });
 }
@@ -352,6 +371,10 @@ void FWCSettingsPopup::onResetData(CCObject*) {
     auto analyzer = FrameWindowAnalyzer::get();
     analyzer->reset();
     analyzer->setTracking(true);
+    if (auto overlay = FrameWindowOverlay::get()) {
+        overlay->updateDisplay();
+        overlay->updatePosition();
+    }
     m_macroInfoLabel->setString("Stats reset");
     m_macroInfoLabel->setColor({ 255, 255, 0 });
 }

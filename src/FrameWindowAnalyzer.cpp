@@ -33,6 +33,8 @@ void FrameWindowAnalyzer::reset() {
     m_firstFrame = true;
     m_levelLength = 0.0f;
     m_gameState = GameState();
+    m_macroLoaded = false;
+    m_macroName.clear();
 
     // Reset per-gamemode stats
     for (int i = 0; i < static_cast<int>(Gamemode::COUNT); i++) {
@@ -112,11 +114,18 @@ void FrameWindowAnalyzer::onUpdate(float dt, PlayerObject* player, float levelLe
     FPSoundManager::get()->update(dt);
 }
 
+bool FrameWindowAnalyzer::hasRecordedThisFrame(int player, bool isPress) const {
+    if (m_clicks.empty()) return false;
+    auto const& last = m_clicks.back();
+    return last.frame == m_currentFrame && last.player == player && last.isHold == isPress;
+}
+
 // ============================================================
-// Player input — called on click/release
+// Player input — called on click/release (works with bots too!)
 // ============================================================
 void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int playerNum) {
     if (!m_isTracking || !player) return;
+    if (hasRecordedThisFrame(playerNum, isPress)) return;
 
     if (isPress) {
         m_lastHoldDuration = 0;
@@ -189,44 +198,52 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
 
     // Update per-gamemode stats
     int modeIdx = static_cast<int>(click.gamemode);
-    m_gamemodeStats[modeIdx].totalClicks++;
-    m_gamemodeStats[modeIdx].windowDistribution[frameWindow]++;
-    if (isCBF) m_gamemodeStats[modeIdx].cbfCount++;
-    if (isRingFP) m_gamemodeStats[modeIdx].ringFPCount++;
+    if (modeIdx >= 0 && modeIdx < static_cast<int>(Gamemode::COUNT)) {
+        m_gamemodeStats[modeIdx].totalClicks++;
+        m_gamemodeStats[modeIdx].windowDistribution[frameWindow]++;
+        if (isCBF) m_gamemodeStats[modeIdx].cbfCount++;
+        if (isRingFP) m_gamemodeStats[modeIdx].ringFPCount++;
+    }
 
     m_lastClickTime = m_levelTime;
     m_lastClickFrame = m_currentFrame;
 }
 
 // ============================================================
-// Ring/orb interaction — called from PlayerObject::ringJump hook
+// Ring jump hook — called when orb/ring is triggered
 // ============================================================
 void FrameWindowAnalyzer::onRingJump(PlayerObject* player, RingObject* ring) {
+    if (!m_isTracking || !player) return;
+
     m_pendingRingHit = true;
-    if (player && ring) {
-        float dx = player->getPositionX() - ring->getPositionX();
-        float dy = player->getPositionY() - ring->getPositionY();
-        m_lastRingDistance = std::sqrt(dx * dx + dy * dy);
+
+    if (ring) {
+        float px = player->getPositionX();
+        float py = player->getPositionY();
+        float rx = ring->getPositionX();
+        float ry = ring->getPositionY();
+        m_lastRingDistance = std::sqrt((px - rx) * (px - rx) + (py - ry) * (py - ry));
     } else {
         m_lastRingDistance = 0.0f;
     }
 }
 
 // ============================================================
-// Macro analysis
+// Macro analysis (Eclipse .gdr2, MegaHack .mhr, JSON, etc.)
 // ============================================================
 void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
     reset();
 
     m_macroLoaded = true;
     m_macroName = macro.name.empty() ? "Imported Macro" : macro.name;
-    m_macroFPS = macro.recordFPS;
+    m_macroFPS = (macro.recordFPS > 0.0f) ? macro.recordFPS : 240.0f;
 
     if (macro.inputs.empty()) return;
 
+    // Filter press events for analysis
     std::vector<MacroParser::MacroInput> presses;
     for (auto const& inp : macro.inputs) {
-        if (inp.player == 1 && inp.isPress) {
+        if (inp.isPress) {
             presses.push_back(inp);
         }
     }
@@ -252,11 +269,11 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
         click.playerY = 0.0f;
         click.frameWindow = frameWindow;
         click.isHold = true;
-        click.player = 1;
+        click.player = presses[i].player;
         click.isCBF = isCBF;
         click.isRingHit = false;
         click.isRingFP = false;
-        click.gamemode = Gamemode::CUBE; // Can't determine from macro
+        click.gamemode = Gamemode::CUBE;
 
         m_clicks.push_back(click);
         m_totalClicks++;
@@ -268,12 +285,12 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
         m_levelTime = static_cast<double>(presses.back().frame) / m_macroFPS;
     }
 
-    log::info("[Polskie FWC] Macro: {} clicks, {} CBF, avg {:.1f}f, precision {:.2f} σ/s",
-        m_totalClicks, m_cbfCount, getAverageWindow(), getPrecisionScore());
+    log::info("[Polskie FWC] Macro loaded: '{}', {} clicks, {} CBF, avg {:.2f}f",
+        m_macroName, m_totalClicks, m_cbfCount, getAverageWindow());
 }
 
 // ============================================================
-// Frame window calculation (99% accurate calibrated physics)
+// Frame window calculation (calibrated GD physics)
 // ============================================================
 int FrameWindowAnalyzer::calculateFrameWindow(PlayerObject* player, float dt) {
     if (!player) return 10;
@@ -327,9 +344,8 @@ double FrameWindowAnalyzer::estimateGapLeniency(GameState const& state) {
             break;
         }
         case Gamemode::SHIP: {
-            // Straight flying micro-clicks
             if (m_lastHoldDuration > 0 && m_lastHoldDuration <= 3) {
-                modeFactor = 0.25; // Frame perfect tap!
+                modeFactor = 0.25; // Frame perfect straight-fly tap!
             } else {
                 modeFactor = 0.65;
             }
@@ -339,12 +355,12 @@ double FrameWindowAnalyzer::estimateGapLeniency(GameState const& state) {
             modeFactor = 0.60;
             break;
         }
-        case Gamemode::ROBOT: {
+        case Gamemode::UFO: {
             modeFactor = 0.70;
             break;
         }
-        case Gamemode::UFO: {
-            modeFactor = 0.72;
+        case Gamemode::ROBOT: {
+            modeFactor = (m_lastHoldDuration > 0 && m_lastHoldDuration <= 2) ? 0.30 : 0.75;
             break;
         }
         case Gamemode::BALL: {

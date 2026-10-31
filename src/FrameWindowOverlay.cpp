@@ -1,10 +1,23 @@
 #include "FrameWindowOverlay.hpp"
 #include <fmt/format.h>
 
+static FrameWindowOverlay* s_instance = nullptr;
+
+FrameWindowOverlay* FrameWindowOverlay::get() {
+    return s_instance;
+}
+
+FrameWindowOverlay::~FrameWindowOverlay() {
+    if (s_instance == this) {
+        s_instance = nullptr;
+    }
+}
+
 FrameWindowOverlay* FrameWindowOverlay::create() {
     auto ret = new FrameWindowOverlay();
     if (ret && ret->init()) {
         ret->autorelease();
+        s_instance = ret;
         return ret;
     }
     CC_SAFE_DELETE(ret);
@@ -15,23 +28,23 @@ CCLabelBMFont* FrameWindowOverlay::createPusabLabel(const char* text, float scal
     auto label = CCLabelBMFont::create(text, "bigFont.fnt");
     label->setScale(scale);
     label->setColor(color);
-    label->setAnchorPoint({ 0.0f, 0.5f });
+    label->setAnchorPoint({ 0.0f, 1.0f });
     label->setPosition({ x, y });
-    m_background->addChild(label);
+    this->addChild(label, 1);
     return label;
 }
 
 void FrameWindowOverlay::setupBuckets() {
     m_buckets.clear();
 
-    // 1:1 NaN GD bucket layout & exact sampled colors
-    m_buckets.push_back({ "10+:",  11, 9999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Violet
+    // 1:1 NaN GD bucket order from video (download(4).mp4) — top to bottom:
     m_buckets.push_back({ "9-10:", 9,  10,   { 138, 95,  249 }, nullptr }); // #8A5FF9 Purple
     m_buckets.push_back({ "7-8:",  7,  8,    { 89,  201, 215 }, nullptr }); // #59C9D7 Light Blue / Cyan
     m_buckets.push_back({ "5-6:",  5,  6,    { 119, 223, 145 }, nullptr }); // #77DF91 Lime / Mint Green
     m_buckets.push_back({ "3-4:",  3,  4,    { 208, 213, 59  }, nullptr }); // #D0D53B Pastel Yellow
     m_buckets.push_back({ "1-2:",  1,  2,    { 232, 160, 32  }, nullptr }); // #E8A020 Amber / Orange
     m_buckets.push_back({ "0-1:",  0,  1,    { 239, 79,  80  }, nullptr }); // #EF4F50 Frame Perfect Pink/Red
+    m_buckets.push_back({ "10+:",  11, 9999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Violet (optional overflow)
 }
 
 bool FrameWindowOverlay::init() {
@@ -45,53 +58,35 @@ bool FrameWindowOverlay::init() {
     setupBuckets();
 
     // Semi-transparent background (default opacity 0 = clean transparent like NaN GD)
-    float totalW = 180.0f;
-    float totalH = showTitle ? 250.0f : 235.0f;
     m_background = CCLayerColor::create(ccc4(0, 0, 0, static_cast<GLubyte>(opacity)));
-    m_background->setContentSize({ totalW, totalH });
-    m_background->setScale(scale);
+    m_background->setVisible(opacity > 0);
     this->addChild(m_background, 0);
 
-    float xPad = 6.0f;
-    float yPos = totalH - 12.0f;
-
-    // Optional Title header (Pusab font)
-    m_titleLabel = createPusabLabel("POLSKIE FWC", 0.35f, { 255, 215, 0 }, xPad, yPos);
+    // Optional Title header (Pusab font, default hidden)
+    m_titleLabel = createPusabLabel("POLSKIE FWC", 0.32f * scale, { 255, 215, 0 }, 0, 0);
     m_titleLabel->setVisible(showTitle);
-    if (showTitle) {
-        yPos -= 14.0f;
-    }
 
     // 1:1 NaN GD bucket labels in Pusab font
     for (auto& bucket : m_buckets) {
-        std::string txt = fmt::format("{:<5} 0", bucket.label);
-        bucket.labelNode = createPusabLabel(txt.c_str(), 0.33f, bucket.color, xPad, yPos);
-        yPos -= 12.5f;
+        std::string txt = fmt::format("{:<6}0", bucket.label);
+        bucket.labelNode = createPusabLabel(txt.c_str(), 0.30f * scale, bucket.color, 0, 0);
     }
 
-    yPos -= 4.0f;
-
-    // MS & Hz stats (Razy / NaN GD style)
-    m_msLabel = createPusabLabel("0.00MS", 0.30f, { 243, 242, 246 }, xPad, yPos);
-    yPos -= 11.5f;
-
-    m_hzLabel = createPusabLabel("240Hz", 0.30f, { 245, 243, 246 }, xPad, yPos);
-    yPos -= 13.0f;
-
     // CBF Status (Frame Perfect!)
-    m_cbfLabel = createPusabLabel("CBF: 0", 0.30f, { 239, 79, 150 }, xPad, yPos);
-    yPos -= 12.0f;
+    m_cbfLabel = createPusabLabel("CBF: 0", 0.28f * scale, { 239, 79, 150 }, 0, 0);
 
     // Rings Frame Perfect
-    m_ringLabel = createPusabLabel("RINGS FP: 0/0", 0.28f, { 255, 200, 50 }, xPad, yPos);
-    yPos -= 11.5f;
+    m_ringLabel = createPusabLabel("RINGS FP: 0/0", 0.27f * scale, { 255, 200, 50 }, 0, 0);
+
+    // MS & Hz stats (Razy / NaN GD style)
+    m_msLabel = createPusabLabel("0.00MS", 0.27f * scale, { 243, 242, 246 }, 0, 0);
+    m_hzLabel = createPusabLabel("240Hz", 0.27f * scale, { 245, 243, 246 }, 0, 0);
 
     // Gamemode & Total Clicks
-    m_modeLabel = createPusabLabel("MODE: CUBE", 0.27f, { 100, 255, 150 }, xPad, yPos);
-    yPos -= 11.0f;
+    m_modeLabel = createPusabLabel("MODE: CUBE", 0.26f * scale, { 100, 255, 150 }, 0, 0);
+    m_clicksLabel = createPusabLabel("CLICKS: 0", 0.26f * scale, { 200, 200, 200 }, 0, 0);
 
-    m_clicksLabel = createPusabLabel("CLICKS: 0", 0.27f, { 200, 200, 200 }, xPad, yPos);
-
+    updateDisplay();
     updatePosition();
     this->scheduleUpdate();
 
@@ -135,12 +130,14 @@ void FrameWindowOverlay::updateDisplay() {
     for (auto& bucket : m_buckets) {
         if (!bucket.labelNode) continue;
 
-        // Higher window filter (9-10 and 10+)
-        if (!showHigher && (bucket.minFrames >= 9)) {
+        // Higher window filter (9-10)
+        if (!showHigher && bucket.minFrames >= 9) {
             bucket.labelNode->setVisible(false);
             continue;
         }
-        if (!show10Plus && (bucket.minFrames >= 11)) {
+
+        // 10+ overflow bucket filter
+        if (!show10Plus && bucket.minFrames >= 11) {
             bucket.labelNode->setVisible(false);
             continue;
         }
@@ -167,7 +164,7 @@ void FrameWindowOverlay::updateDisplay() {
             }
         }
 
-        bucket.labelNode->setString(fmt::format("{:<5} {}", bucket.label, count).c_str());
+        bucket.labelNode->setString(fmt::format("{:<6}{}", bucket.label, count).c_str());
 
         // Bright color on non-zero, slightly dimmed on zero (like NaN GD)
         if (count > 0) {
@@ -206,11 +203,9 @@ void FrameWindowOverlay::updateDisplay() {
         if (analyzer->isLastClickCBF() || m_cbfFlashTimer > 0.0f) {
             m_cbfLabel->setString(fmt::format("CBF: {} (Frame Perfect!)", cbfCount).c_str());
             m_cbfLabel->setColor({ 255, 255, 0 }); // Bright Yellow flash!
-            m_cbfLabel->setScale(0.32f);
         } else {
             m_cbfLabel->setString(fmt::format("CBF: {}", cbfCount).c_str());
             m_cbfLabel->setColor({ 239, 79, 150 }); // Frame perfect pink
-            m_cbfLabel->setScale(0.30f);
         }
     } else {
         m_cbfLabel->setVisible(false);
@@ -244,37 +239,92 @@ void FrameWindowOverlay::updatePosition() {
     auto mod = Mod::get();
     std::string position = mod->getSettingValue<std::string>("overlay-position");
     float scale = static_cast<float>(mod->getSettingValue<double>("overlay-scale"));
+    bool showTitle = mod->getSettingValue<bool>("show-title");
+    bool showMsHz = mod->getSettingValue<bool>("show-ms-hz");
+    bool showCBF = mod->getSettingValue<bool>("show-cbf");
+    bool showRings = mod->getSettingValue<bool>("show-ring-fp");
+    bool showGamemode = mod->getSettingValue<bool>("show-gamemode");
+    int opacity = mod->getSettingValue<int64_t>("overlay-opacity");
 
     auto winSize = CCDirector::get()->getWinSize();
-    float bgW = m_background->getContentWidth() * scale;
-    float bgH = m_background->getContentHeight() * scale;
 
-    float x = 4.0f;
-    float y = 4.0f;
+    // Scale adjustments for Pusab font
+    if (m_titleLabel) m_titleLabel->setScale(0.32f * scale);
+    for (auto& bucket : m_buckets) {
+        if (bucket.labelNode) bucket.labelNode->setScale(0.30f * scale);
+    }
+    if (m_cbfLabel) m_cbfLabel->setScale(0.28f * scale);
+    if (m_ringLabel) m_ringLabel->setScale(0.27f * scale);
+    if (m_msLabel) m_msLabel->setScale(0.27f * scale);
+    if (m_hzLabel) m_hzLabel->setScale(0.27f * scale);
+    if (m_modeLabel) m_modeLabel->setScale(0.26f * scale);
+    if (m_clicksLabel) m_clicksLabel->setScale(0.26f * scale);
 
-    if (position == "top-left") {
-        x = 4.0f;
-        y = winSize.height - bgH - 4.0f;
-    } else if (position == "top-right") {
-        x = winSize.width - bgW - 4.0f;
-        y = winSize.height - bgH - 4.0f;
-    } else if (position == "bottom-left") {
-        x = 4.0f;
-        y = 4.0f;
-    } else if (position == "bottom-right") {
-        x = winSize.width - bgW - 4.0f;
-        y = 4.0f;
+    // Collect visible labels in order from top to bottom
+    std::vector<CCLabelBMFont*> visibleLabels;
+    if (showTitle && m_titleLabel && m_titleLabel->isVisible()) visibleLabels.push_back(m_titleLabel);
+
+    for (auto& b : m_buckets) {
+        if (b.labelNode && b.labelNode->isVisible()) {
+            visibleLabels.push_back(b.labelNode);
+        }
     }
 
-    m_background->setPosition({ x, y });
+    if (showCBF && m_cbfLabel && m_cbfLabel->isVisible()) visibleLabels.push_back(m_cbfLabel);
+    if (showRings && m_ringLabel && m_ringLabel->isVisible()) visibleLabels.push_back(m_ringLabel);
+    if (showMsHz && m_msLabel && m_msLabel->isVisible()) {
+        visibleLabels.push_back(m_msLabel);
+        if (m_hzLabel && m_hzLabel->isVisible()) visibleLabels.push_back(m_hzLabel);
+    }
+    if (showGamemode && m_modeLabel && m_modeLabel->isVisible()) visibleLabels.push_back(m_modeLabel);
+    if (m_clicksLabel && m_clicksLabel->isVisible()) visibleLabels.push_back(m_clicksLabel);
+
+    if (visibleLabels.empty()) {
+        if (m_background) m_background->setVisible(false);
+        return;
+    }
+
+    // Precise line height matching Pusab glyph metric
+    float lineH = 11.5f * scale;
+
+    bool isRight = (position == "top-right" || position == "bottom-right");
+    bool isBottom = (position == "bottom-left" || position == "bottom-right");
+
+    // Strictly pinned to top-left screen corner by default
+    float startX = isRight ? (winSize.width - 8.0f) : 8.0f;
+    float startY = isBottom ? (8.0f + (visibleLabels.size() * lineH)) : (winSize.height - 8.0f);
+
+    CCPoint anchor = isRight ? CCPoint{ 1.0f, 1.0f } : CCPoint{ 0.0f, 1.0f };
+
+    float curY = startY;
+    float maxW = 0.0f;
+
+    for (auto* lbl : visibleLabels) {
+        lbl->setAnchorPoint(anchor);
+        lbl->setPosition({ startX, curY });
+        float w = lbl->getContentWidth() * lbl->getScale();
+        if (w > maxW) maxW = w;
+        curY -= lineH;
+    }
+
+    // Optional background rect behind text
+    if (m_background) {
+        if (opacity > 0) {
+            m_background->setVisible(true);
+            m_background->setOpacity(static_cast<GLubyte>(opacity));
+            float totalH = (visibleLabels.size() * lineH) + 6.0f;
+            float totalW = maxW + 10.0f;
+            m_background->setContentSize({ totalW, totalH });
+            m_background->ignoreAnchorPointForPosition(false);
+            m_background->setAnchorPoint(anchor);
+            m_background->setPosition({ startX + (isRight ? 4.0f : -4.0f), startY + 3.0f });
+        } else {
+            m_background->setVisible(false);
+        }
+    }
 }
 
 void FrameWindowOverlay::refreshSettings() {
-    auto mod = Mod::get();
-    float scale = static_cast<float>(mod->getSettingValue<double>("overlay-scale"));
-    int opacity = mod->getSettingValue<int64_t>("overlay-opacity");
-
-    m_background->setScale(scale);
-    m_background->setOpacity(static_cast<GLubyte>(opacity));
+    updateDisplay();
     updatePosition();
 }
