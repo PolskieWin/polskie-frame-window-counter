@@ -29,6 +29,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           combine: true
+          android-ndk-version: "26.3.11579264"
+          configure-args: "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 
   combine:
     needs: build
