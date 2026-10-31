@@ -11,13 +11,14 @@ using namespace geode::prelude;
  * 
  * Supports:
  * - Eclipse Menu / GDR2 (.gdr2, .gdr) — binary replay format ("esplice")
- * - MegaHack Replay (.mhr, .mhr.json)
- * - Generic JSON / TASBot / xdBot (.json)
+ * - MegaHack Replay (.mhr, .mhr.json) — binary and JSON
+ * - Generic JSON / TASBot / xdBot / ReplayBot (.json)
+ * - Plain text / CSV macros (.txt)
  */
 class MacroParser {
 public:
     struct MacroInput {
-        int frame;          // Frame number
+        int frame;          // Frame index
         bool isPress;       // true = press, false = release
         int player;         // 1 = player1, 2 = player2
         int button;         // 1 = jump, 2 = left, 3 = right
@@ -36,8 +37,10 @@ public:
 
     enum class MacroFormat {
         ECLIPSE_GDR2,   // Eclipse Menu .gdr2 / .gdr
-        MHR_JSON,       // MegaHack Replay
+        MHR_BINARY,     // MegaHack Replay Binary (.mhr)
+        MHR_JSON,       // MegaHack Replay JSON (.mhr.json)
         JSON,           // TASBot / generic JSON
+        PLAIN_TEXT,     // Text / CSV format
         UNKNOWN
     };
 
@@ -45,8 +48,9 @@ public:
     static MacroData parse(std::string const& path);
 
     static MacroData parseEclipseGDR2(std::string const& path);
-    static MacroData parseMHRJson(std::string const& path);
-    static MacroData parseGenericJson(std::string const& path);
+    static MacroData parseMHRBinary(std::string const& path);
+    static MacroData parseJsonMacro(std::string const& path);
+    static MacroData parsePlainText(std::string const& path);
 
     static std::vector<std::string> findMacroFiles(std::string const& directory);
     static std::vector<std::string> getDefaultMacroDirs();

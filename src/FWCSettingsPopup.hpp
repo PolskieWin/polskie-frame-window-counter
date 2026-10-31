@@ -41,9 +41,12 @@ protected:
     void onIncreaseFPS(CCObject* sender);
     void onDecreaseFPS(CCObject* sender);
 
-    void onBrowseMacros(CCObject* sender);
+    void onPickMacroFile(CCObject* sender);
+    void onScanMacroFolder(CCObject* sender);
     void onClearMacro(CCObject* sender);
     void onResetData(CCObject* sender);
+
+    void loadMacroFile(std::string const& path);
 
     CCMenuItemToggler* createRobTopToggle(std::string const& label, bool defaultVal,
                                           SEL_MenuHandler callback, float x, float y);

@@ -6,25 +6,21 @@
 using namespace geode::prelude;
 
 /**
- * FrameWindowOverlay — Polskie Edition
+ * FrameWindowOverlay — Authentic NaN GD 1:1 Replica
  * 
- * Authentic RobTop-style HUD with Pusab font (bigFont.fnt):
- * - NaN GD & Razy's Frame Windows layout:
- *     10+:  X (Purple)
- *     8-10: X (Blue)
- *     6-8:  X (Light Blue)
- *     5-6:  X (Cyan)
- *     4-5:  X (Green)
+ * Authentic RobTop HUD with Pusab font (bigFont.fnt):
+ * - NaN GD layout:
+ *     10+:  X (Violet)
+ *     9-10: X (Purple)
+ *     7-8:  X (Light Blue)
+ *     5-6:  X (Lime Green)
  *     3-4:  X (Yellow)
- *     2-3:  X (Orange)
- *     1-2:  X (Red)
- *     0-1:  X (Pink/Magenta - Frame Perfect / CBF!)
- *     XX.XXMS
- *     XXHz
- * - CBF status: "CBF: X (Frame Perfect!)" when active, "CBF: X" normally
- * - Ring FP counter: "Rings FP: X/Y"
- * - Mode indicator: "Mode: Cube / Wave / etc."
- * - Option to enable/disable higher numbers (8-10, 10+)
+ *     1-2:  X (Orange)
+ *     0-1:  X (Frame Perfect Pink/Red)
+ * - Optional MS & Hz counters (Razy / NaN GD style)
+ * - Optional CBF status: "CBF: X (Frame Perfect!)"
+ * - Optional Ring FP counter: "RINGS FP: X/Y"
+ * - Optional Gamemode & total clicks
  */
 class FrameWindowOverlay : public CCLayer {
 public:
@@ -46,10 +42,10 @@ protected:
     // Title & credits (Pusab font)
     CCLabelBMFont* m_titleLabel = nullptr;
 
-    // Buckets matching Razy's Frame Windows
+    // Buckets matching NaN GD
     std::vector<WindowBucket> m_buckets;
 
-    // MS and Hz stats (from video)
+    // MS and Hz stats
     CCLabelBMFont* m_msLabel = nullptr;
     CCLabelBMFont* m_hzLabel = nullptr;
 
@@ -64,9 +60,9 @@ protected:
     CCLabelBMFont* m_clicksLabel = nullptr;
 
     float m_updateTimer = 0.0f;
-    float m_updateInterval = 0.12f;
+    float m_updateInterval = 0.10f;
 
-    // CBF flash timer for the "(Frame Perfect!)" highlight
+    // CBF flash timer for "(Frame Perfect!)" highlight
     float m_cbfFlashTimer = 0.0f;
 
     bool init() override;

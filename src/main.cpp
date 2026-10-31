@@ -104,7 +104,7 @@ class $modify(FWCPlayLayer, PlayLayer) {
         auto analyzer = FrameWindowAnalyzer::get();
         analyzer->setTracking(false);
 
-        log::info("[Polskie FWC] Poziom ukonczony! Klikniec: {}, CBF: {}, Ring FP: {}",
+        log::info("[Polskie FWC] Level complete! Clicks: {}, CBF: {}, Ring FP: {}",
             analyzer->getTotalClicks(),
             analyzer->getCBFCount(),
             analyzer->getRingFPCount()
@@ -228,6 +228,6 @@ class $modify(FWCPauseLayer, PauseLayer) {
 // Mod entry point
 // ============================================================
 $on_mod(Loaded) {
-    log::info("[Polskie Frame Window Counter v3] Zaladowano pomyslnie! Autor: Polskie");
-    log::info("[Polskie FWC] Obsluga: Eclipse Menu (.gdr2), MegaHack (.mhr), JSON");
+    log::info("[Polskie Frame Window Counter] Loaded successfully! Author: Polskie");
+    log::info("[Polskie FWC] Formats supported: Eclipse Menu (.gdr2), MegaHack (.mhr), JSON");
 }

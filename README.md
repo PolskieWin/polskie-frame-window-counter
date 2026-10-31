@@ -5,67 +5,64 @@
 [![Platform Support](https://img.shields.io/badge/Platforms-Android%20%7C%20Windows-7c6ffa?style=for-the-badge)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest)
 [![Geometry Dash](https://img.shields.io/badge/GD-2.2071%20--%202.2091-6eb2f6?style=for-the-badge)](https://geode-sdk.org/)
 
-Autorska modyfikacja stworzona przez **Polskie** dla Geometry Dash 2.2 na Geode. Wierne odwzorowanie nakładki z filmu **Razy's Frame Windows & NaN GD** z oryginalną czcionką RobTopa **Pusab (`bigFont.fnt`)**, wskaźnikiem **CBF (Click Before Frame)**, dźwiękami Frame Perfect oraz obsługą makr Eclipse (`.gdr2`), MegaHack (`.mhr`) i JSON.
+An authentic 1:1 replica of the **NaN GD** & **Razy's Frame Windows** counter created by **Polskie** for Geometry Dash 2.2 on Geode. Features RobTop's original **Pusab font (`bigFont.fnt`)**, **CBF (Click Before Frame)** indicator, NaN GD Frame Perfect sounds, and universal bot macro import (Eclipse `.gdr2`, MegaHack `.mhr`, and JSON).
 
 ---
 
-## 📥 Pobierz (Download)
+## 📥 Download
 
-Najnowszy uniwersalny pakiet `.geode` dla platform **Android** (32-bit & 64-bit) i **Windows** (64-bit):
+Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows** (64-bit):
 
-👉 **[Pobierz Polskie Frame Window Counter v3.0.1 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
+👉 **[Download Polskie Frame Window Counter v3.1.0 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
 
 ---
 
-## 🎨 Paleta Kolorów (1:1 z Wideo Referencyjnego)
+## 🎨 1:1 NaN GD Frame Window Buckets & Color Palette
 
-| Okno klatek | Kolor | HEX | Wartość RGB |
+| Frame Window | Color Name | HEX Code | RGB Value |
 |---|---|---|---|
-| **`10+:`** | Jasny fioletowy | `#BA5DF9` | `RGB(186, 93, 249)` |
-| **`8-10:`** | Błękit lawendowy | `#7C6FFA` | `RGB(124, 111, 250)` |
-| **`6-8:`** | Sky Blue | `#6EB2F6` | `RGB(110, 178, 246)` |
-| **`5-6:`** | Morski / Cyan | `#76EAF2` | `RGB(118, 234, 242)` |
-| **`4-5:`** | Limonkowa zieleń | `#79F07F` | `RGB(121, 240, 127)` |
-| **`3-4:`** | Pastelowy żółty | `#F9F180` | `RGB(249, 241, 128)` |
-| **`2-3:`** | Ciepły pomarańcz | `#F1A153` | `RGB(241, 161, 83)` |
-| **`1-2:`** | Koralowa czerwień | `#EA4853` | `RGB(234, 72, 83)` |
-| **`0-1:`** | Magenta (Frame Perfect!) | `#EF4F96` | `RGB(239, 79, 150)` |
-| **`MS` / `Hz`** | Czysta biel | `#F3F2F6` / `#F5F3F6` | `RGB(243, 242, 246)` |
+| **`10+:`** | Violet / Purple | `#BA5DF9` | `RGB(186, 93, 249)` |
+| **`9-10:`** | Purple | `#8A5FF9` | `RGB(138, 95, 249)` |
+| **`7-8:`** | Sky Blue / Cyan | `#59C9D7` | `RGB(89, 201, 215)` |
+| **`5-6:`** | Lime / Mint Green | `#77DF91` | `RGB(119, 223, 145)` |
+| **`3-4:`** | Pastel Yellow | `#D0D53B` | `RGB(208, 213, 59)` |
+| **`1-2:`** | Warm Amber / Orange | `#E8A020` | `RGB(232, 160, 32)` |
+| **`0-1:`** | Frame Perfect Pink/Red | `#EF4F50` | `RGB(239, 79, 80)` |
+| **`MS` / `Hz`** | Pure White | `#F3F2F6` | `RGB(243, 242, 246)` |
 
 ---
 
-## ✨ Kluczowe Funkcje
+## ✨ Key Features
 
-- 🔤 **Czcionka Pusab RobTopa**: Wszystkie etykiety, liczniki i wartości renderowane za pomocą `bigFont.fnt`.
-- ⚡ **Wskaźnik CBF (Click Before Frame)**: Wyświetla dynamiczny napis `CBF: X (Frame Perfect!)` z żółtym błyskiem przy trafieniu w najciaśniejsze okno.
-- 🔔 **Dźwięki Frame Perfect (NaN GD)**: Sygnalizacja dźwiękowa sukcesu przy trafieniu w okno `0-1f`.
-- 💍 **Wykrywanie Frame Perfect na ringach/orbach**: Hook do `PlayerObject::ringJump`.
-- 🎮 **Obsługa wszystkich trybów**: Zoptymalizowana fizyka dla Cube, Ship, Ball, UFO, Wave, Robot, Spider oraz Swing.
-- ⏱️ **Licznik milisekund i odświeżania**: Statystyki `MS` oraz efektywne `Hz` aktualizowane w czasie rzeczywistym.
-- 📁 **Wsparcie dla makr**: Import makr **Eclipse Menu ("esplice")** `.gdr2`, **MegaHack** `.mhr` oraz JSON.
-- 📱 **Multiplatformowość w jednym pliku**:
-  - `polskie.frame-window-counter.dll` (Windows 64-bit)
-  - `polskie.frame-window-counter.android32.so` (Android 32-bit)
-  - `polskie.frame-window-counter.android64.so` (Android 64-bit)
+- 🔤 **Pusab Font (`bigFont.fnt`)**: All HUD labels, numbers, and stats match RobTop's visual style.
+- 🎯 **1:1 NaN GD Layout**: 2-frame step buckets (`9-10:`, `7-8:`, `5-6:`, `3-4:`, `1-2:`, `0-1:`, `10+:`).
+- ⚡ **Dynamic CBF (Click Before Frame)**: Displays `CBF: X (Frame Perfect!)` with a yellow flash upon hitting a frame-perfect window.
+- 🔔 **Frame Perfect Sounds**: Plays NaN GD chime / ding on frame-perfect clicks.
+- 💍 **Ring / Orb FP Tracking**: Hook into `PlayerObject::ringJump` to detect and track orb hits.
+- 📁 **Universal Bot Macro Import**:
+  - Native file picker (`file::pick`) to select macros from anywhere on your device.
+  - Built-in folder scanner for automatic macro detection.
+  - Supports Eclipse Menu (`.gdr2`, `.gdr`), MegaHack (`.mhr`, `.mhr.json`), and generic JSON macros.
+- 🎮 **All Gamemodes & FPS**: Cube, Ship, Ball, UFO, Wave, Robot, Spider, and Swing.
 
 ---
 
-## 🛠️ Instalacja
+## 🛠️ Installation
 
 ### Android (Geode)
-1. Pobierz plik [`polskie.frame-window-counter.geode`](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode) na telefon.
-2. W Geometry Dash wejdź w menu **Geode** -> **Mods**.
-3. Kliknij ikonę instalacji z pliku i wybierz pobrany `.geode`.
+1. Download [`polskie.frame-window-counter.geode`](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode) to your device.
+2. In Geometry Dash, open the **Geode** menu -> **Mods**.
+3. Tap the file install icon and select the downloaded `.geode` file.
 
 ### Windows (Geode)
-1. Pobierz plik [`polskie.frame-window-counter.geode`](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode).
-2. Przenieś go do folderu `geode/mods/` w katalogu Geometry Dash (np. `steamapps/common/Geometry Dash/geode/mods/`).
-3. Uruchom Geometry Dash!
+1. Download [`polskie.frame-window-counter.geode`](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode).
+2. Place it into your `geode/mods/` folder inside the Geometry Dash directory.
+3. Launch Geometry Dash!
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 Author
 
-- **Twórca**: **Polskie**
-- **Wersja**: `v3.0.1`
+- **Developer**: **Polskie**
+- **Version**: `v3.1.0`
 - **Geode SDK**: `5.11.2`
