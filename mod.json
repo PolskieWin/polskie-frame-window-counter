@@ -6,7 +6,7 @@
     },
     "id": "polskie.frame-window-counter",
     "name": "Polskie Frame Window Counter",
-    "version": "v3.0.0",
+    "version": "v3.0.1",
     "developer": "Polskie",
     "description": "Autorska nakładka Polskie Frame Window Counter w stylu Razy's Frame Windows & NaN GD z czcionką Pusab. Analiza okien klatek (0-1, 1-2, 2-3...), liczenie CBF (Click Before Frame = Frame Perfect), wskaźnik i dźwięki Ring FP (orb), obsługa wszystkich trybów gry i dowolnego FPS, dźwięki NaN GD oraz import makr Eclipse (.gdr2), MegaHack (.mhr) i JSON.",
     "tags": ["gameplay", "interface", "utility"],

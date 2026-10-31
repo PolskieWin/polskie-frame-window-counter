@@ -24,17 +24,17 @@ CCLabelBMFont* FrameWindowOverlay::createPusabLabel(const char* text, float scal
 void FrameWindowOverlay::setupBuckets() {
     m_buckets.clear();
 
-    // Razy's Frame Windows & NaN GD buckets
+    // Razy's Frame Windows & NaN GD buckets - exact colors sampled from reference video
     // High to low (rendered top to bottom)
-    m_buckets.push_back({ "10+:",  10, 999, { 190, 70,  255 }, nullptr }); // Purple
-    m_buckets.push_back({ "8-10:", 8,  10,  { 70,  120, 255 }, nullptr }); // Blue
-    m_buckets.push_back({ "6-8:",  6,  8,   { 70,  190, 255 }, nullptr }); // Light Blue
-    m_buckets.push_back({ "5-6:",  5,  6,   { 0,   255, 235 }, nullptr }); // Cyan
-    m_buckets.push_back({ "4-5:",  4,  5,   { 50,  255, 90  }, nullptr }); // Green
-    m_buckets.push_back({ "3-4:",  3,  4,   { 255, 240, 20  }, nullptr }); // Yellow
-    m_buckets.push_back({ "2-3:",  2,  3,   { 255, 140, 20  }, nullptr }); // Orange
-    m_buckets.push_back({ "1-2:",  1,  2,   { 255, 40,  40  }, nullptr }); // Red
-    m_buckets.push_back({ "0-1:",  0,  1,   { 255, 20,  130 }, nullptr }); // Pink/Magenta = FRAME PERFECT!
+    m_buckets.push_back({ "10+:",  10, 999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Bright Violet/Purple
+    m_buckets.push_back({ "8-10:", 8,  10,  { 124, 111, 250 }, nullptr }); // #7C6FFA Periwinkle Blue
+    m_buckets.push_back({ "6-8:",  6,  8,   { 110, 178, 246 }, nullptr }); // #6EB2F6 Sky Blue
+    m_buckets.push_back({ "5-6:",  5,  6,   { 118, 234, 242 }, nullptr }); // #76EAF2 Aqua/Cyan
+    m_buckets.push_back({ "4-5:",  4,  5,   { 121, 240, 127 }, nullptr }); // #79F07F Lime Green
+    m_buckets.push_back({ "3-4:",  3,  4,   { 249, 241, 128 }, nullptr }); // #F9F180 Pastel Yellow
+    m_buckets.push_back({ "2-3:",  2,  3,   { 241, 161, 83  }, nullptr }); // #F1A153 Warm Orange
+    m_buckets.push_back({ "1-2:",  1,  2,   { 234, 72,  83  }, nullptr }); // #EA4853 Coral Red
+    m_buckets.push_back({ "0-1:",  0,  1,   { 239, 79,  150 }, nullptr }); // #EF4F96 Hot Pink / Magenta Frame Perfect
 }
 
 bool FrameWindowOverlay::init() {
@@ -71,10 +71,10 @@ bool FrameWindowOverlay::init() {
     yPos -= 3.0f;
 
     // MS & Hz stats (from the video!)
-    m_msLabel = createPusabLabel("0.00MS", 0.30f, { 255, 255, 255 }, xPad, yPos);
+    m_msLabel = createPusabLabel("0.00MS", 0.30f, { 243, 242, 246 }, xPad, yPos);
     yPos -= 11.5f;
 
-    m_hzLabel = createPusabLabel("240Hz", 0.30f, { 255, 255, 255 }, xPad, yPos);
+    m_hzLabel = createPusabLabel("240Hz", 0.30f, { 245, 243, 246 }, xPad, yPos);
     yPos -= 14.0f;
 
     // CBF Status (Frame Perfect!)
@@ -198,7 +198,7 @@ void FrameWindowOverlay::updateDisplay() {
         } else {
             // Normal state: "CBF: X"
             m_cbfLabel->setString(fmt::format("CBF: {}", cbfCount).c_str());
-            m_cbfLabel->setColor({ 255, 60, 160 }); // Classic pink
+            m_cbfLabel->setColor({ 239, 79, 150 }); // Hot pink matching 0-1 frame perfect
             m_cbfLabel->setScale(0.30f);
         }
     } else {

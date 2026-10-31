@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.0.1 — Video Palette & Perfect Color Accuracy
+
+- 🎯 **Dokładna paleta kolorów z wideo**:
+  - `10+:` `#BA5DF9` (Fioletowy / Bright Violet)
+  - `8-10:` `#7C6FFA` (Błękit lawendowy / Periwinkle Blue)
+  - `6-8:` `#6EB2F6` (Jasny błękit / Sky Blue)
+  - `5-6:` `#76EAF2` (Morski / Aqua Cyan)
+  - `4-5:` `#79F07F` (Limonkowa zieleń / Lime Green)
+  - `3-4:` `#F9F180` (Jasnożółty pastelowy / Pastel Yellow)
+  - `2-3:` `#F1A153` (Ciepły pomarańczowy / Warm Orange)
+  - `1-2:` `#EA4853` (Koralowa czerwień / Coral Red)
+  - `0-1:` `#EF4F96` (Magenta / Frame Perfect Pink)
+  - Etykiety `MS` i `Hz`: `#F3F2F6` / `#F5F3F6`
+- ⚙️ **Stabilność i pełne wsparcie wieloplatformowe** (Windows 64-bit, Android 32-bit & 64-bit dla GD 2.2071-2.2091).
+
 ## v3.0.0 — Polskie Edition
 
 - 🎨 **Interfejs w stylu Razy's Frame Windows & RobTop**:
