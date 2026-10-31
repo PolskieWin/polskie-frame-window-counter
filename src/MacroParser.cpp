@@ -149,7 +149,12 @@ MacroParser::MacroData MacroParser::parseMHRJson(std::string const& path) {
         }
 
         std::string content = result.unwrap();
-        auto json = matjson::parse(content);
+        auto jsonRes = matjson::parse(content);
+        if (!jsonRes) {
+            data.error = "Błąd JSON MegaHack: " + jsonRes.unwrapErr().message;
+            return data;
+        }
+        auto json = jsonRes.unwrap();
 
         if (json.contains("name")) data.name = json["name"].asString().unwrapOr(data.name);
         if (json.contains("author")) data.author = json["author"].asString().unwrapOr("");
@@ -203,7 +208,12 @@ MacroParser::MacroData MacroParser::parseGenericJson(std::string const& path) {
         }
 
         std::string content = result.unwrap();
-        auto json = matjson::parse(content);
+        auto jsonRes = matjson::parse(content);
+        if (!jsonRes) {
+            data.error = "Błąd parsowania JSON: " + jsonRes.unwrapErr().message;
+            return data;
+        }
+        auto json = jsonRes.unwrap();
 
         if (json.contains("fps")) {
             data.recordFPS = static_cast<float>(json["fps"].asDouble().unwrapOr(240.0));
