@@ -1,0 +1,112 @@
+{
+    "geode": "v3.0.0",
+    "gd": {
+        "android": "*",
+        "win": "*"
+    },
+    "id": "polskie.frame-window-counter",
+    "name": "Polskie Frame Window Counter",
+    "version": "v3.0.0",
+    "developer": "Polskie",
+    "description": "Autorska nakładka Polskie Frame Window Counter w stylu Razy's Frame Windows & NaN GD z czcionką Pusab. Analiza okien klatek (0-1, 1-2, 2-3...), liczenie CBF (Click Before Frame = Frame Perfect), wskaźnik i dźwięki Ring FP (orb), obsługa wszystkich trybów gry i dowolnego FPS, dźwięki NaN GD oraz import makr Eclipse (.gdr2), MegaHack (.mhr) i JSON.",
+    "tags": ["gameplay", "interface", "utility"],
+    "resources": {
+        "files": [
+            "resources/*.ogg"
+        ]
+    },
+    "settings": {
+        "enabled": {
+            "name": "Enabled",
+            "description": "Włącz/wyłącz nakładkę Polskie Frame Window Counter",
+            "type": "bool",
+            "default": true
+        },
+        "analysis-fps": {
+            "name": "Analysis FPS",
+            "description": "Docelowy FPS fizyki do analizy okien klatek (240Hz to standard NaN GD / Razy)",
+            "type": "int",
+            "default": 240,
+            "min": 60,
+            "max": 360
+        },
+        "overlay-scale": {
+            "name": "Overlay Scale",
+            "description": "Rozmiar nakładki na ekranie",
+            "type": "float",
+            "default": 0.45,
+            "min": 0.15,
+            "max": 1.2
+        },
+        "overlay-opacity": {
+            "name": "Overlay Opacity",
+            "description": "Przezroczystość tła (0 = niewidoczne, 255 = pełne czarne tło)",
+            "type": "int",
+            "default": 140,
+            "min": 0,
+            "max": 255
+        },
+        "overlay-position": {
+            "name": "Overlay Position",
+            "description": "Pozycja na ekranie",
+            "type": "string",
+            "default": "top-left",
+            "one-of": ["top-left", "top-right", "bottom-left", "bottom-right"]
+        },
+        "fp-sound-enabled": {
+            "name": "Frame Perfect Sound",
+            "description": "Odtwarzaj dźwięk ding/coin przy trafieniu w okno 0-1f (CBF frame-perfect tak jak u NaN GD)",
+            "type": "bool",
+            "default": true
+        },
+        "fp-sound-type": {
+            "name": "Sound Type",
+            "description": "Rodzaj dźwięku przy Frame Perfect",
+            "type": "string",
+            "default": "ding",
+            "one-of": ["ding", "coin", "chime", "click"]
+        },
+        "show-cbf": {
+            "name": "Show CBF Indicator",
+            "description": "Wyświetlaj licznik CBF (Click Before Frame). Pokazuje 'CBF: X (Frame Perfect!)' w momencie trafienia FP, bez tego pokazuje zwykłą liczbę CBF",
+            "type": "bool",
+            "default": true
+        },
+        "show-ring-fp": {
+            "name": "Show Ring / Orb FP",
+            "description": "Wykrywaj i zliczaj orby/ringi trafione w oknie Frame Perfect",
+            "type": "bool",
+            "default": true
+        },
+        "show-ms-hz": {
+            "name": "Show MS & Hz",
+            "description": "Wyświetlaj średnie okno w milisekundach (MS) oraz efektywną częstotliwość (Hz) tak jak na filmie Razy's",
+            "type": "bool",
+            "default": true
+        },
+        "show-gamemode": {
+            "name": "Show Gamemode",
+            "description": "Wyświetlaj aktualny tryb gry (Cube, Wave, Ship, Robot, Spider, Ball, UFO, Swing)",
+            "type": "bool",
+            "default": true
+        },
+        "show-higher-windows": {
+            "name": "Show Higher Windows (8-10, 10+)",
+            "description": "Włącz lub wyłącz pokazywanie wyższych okien klatek (8-10 oraz 10+). Wyłącz aby widzieć tylko najtrudniejsze kliknięcia (0-8)",
+            "type": "bool",
+            "default": true
+        },
+        "show-10plus-only": {
+            "name": "Show 10+ Overflow",
+            "description": "Pokaż lub ukryj tylko najwyższy koszyk 10+",
+            "type": "bool",
+            "default": true
+        },
+        "macro-analysis-mode": {
+            "name": "Macro Analysis Mode",
+            "description": "Po załadowaniu makra (Eclipse .gdr2, MegaHack .mhr, JSON), analizuj kliknięcia z makra",
+            "type": "bool",
+            "default": true
+        }
+    }
+}

@@ -1,0 +1,49 @@
+name: Build Polskie Frame Window Counter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "**" ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: Win64
+          - os: ubuntu-latest
+            target: Android64
+          - os: ubuntu-latest
+            target: Android32
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Geode Mod
+        uses: geode-sdk/build-geode-mod@main
+        with:
+          target: ${{ matrix.target }}
+          combine: true
+
+  combine:
+    needs: build
+    name: Combine Builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Combine Geode Builds
+        id: combine
+        uses: geode-sdk/build-geode-mod/combine@main
+
+      - name: Upload Final .geode Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: polskie.frame-window-counter
+          path: ${{ steps.combine.outputs.geode-file }}

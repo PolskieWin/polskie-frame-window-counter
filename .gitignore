@@ -1,0 +1,16 @@
+# Build artifacts
+build/
+bin/
+*.geode
+*.dll
+*.pdb
+*.obj
+*.o
+*.so
+
+# Temporary local tools & video frames
+tools/
+video_frames/
+.cache/
+.vscode/
+.idea/
