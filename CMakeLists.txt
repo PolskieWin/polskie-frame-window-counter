@@ -11,6 +11,14 @@ if (NOT DEFINED ENV{GEODE_SDK})
     )
 endif()
 
+# Disable fmt consteval and OS utilities to avoid clang 20/21 consteval issues
+set(GEODE_DISABLE_FMT_CONSTEVAL ON CACHE BOOL "" FORCE)
+set(FMT_OS OFF CACHE BOOL "Disable fmt OS support" FORCE)
+set(FMT_DOCS OFF CACHE BOOL "Disable fmt docs" FORCE)
+set(FMT_TEST OFF CACHE BOOL "Disable fmt tests" FORCE)
+set(FMT_MODULE OFF CACHE BOOL "Disable fmt modules" FORCE)
+add_compile_definitions(FMT_USE_CONSTEVAL=0 FMT_CONSTEVAL=)
+
 # Add Geode SDK
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode_sdk)
 
