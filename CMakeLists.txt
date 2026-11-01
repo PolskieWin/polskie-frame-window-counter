@@ -14,7 +14,11 @@ endif()
 # Add Geode SDK
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode_sdk)
 
-CPMAddPackage("gh:nlohmann/json#v3.11.3")
+CPMAddPackage(
+    NAME nlohmann_json
+    GITHUB_REPOSITORY nlohmann/json
+    GIT_TAG v3.11.3
+)
 
 # Define the mod library target
 add_library(${PROJECT_NAME} SHARED
