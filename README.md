@@ -13,7 +13,7 @@ An in-game frame-window analyzer for Geometry Dash on Geode, with a NaN GD-inspi
 
 Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows** (64-bit):
 
-👉 **[Download Polskie Frame Window Counter v3.2.0 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
+👉 **[Download Polskie Frame Window Counter v3.3.0 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
 
 ---
 
@@ -72,5 +72,5 @@ The repository targets Geode SDK `6.0.0-alpha.1`. For a local Android build, ins
 ## 👨‍💻 Author
 
 - **Developer**: **Polskie**
-- **Version**: `v3.2.0`
+- **Version**: `v3.3.0`
 - **Geode SDK**: `6.0.0-alpha.1`

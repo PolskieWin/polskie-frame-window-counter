@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.3.0 — Expanded FPS Range, HUD Palette, Input Rings & Replay Event Import
+
+- Added target FPS settings from 30 to 720, with presets for 30, 55, 60, 120, 144, 240, 360, and 720 FPS.
+- Updated the HUD with nine color-coded frame-window buckets and live millisecond/frequency readouts.
+- Added temporary world-space rings and decimal labels for recorded press and release inputs.
+- Added JSON event-stream import routing for `.gdr`, `.slc`, `.tcm`, and `.ybot` files, including sub-frame timing and two-player event fields. Undocumented binary encodings are not decoded.
+- Updated the Geode SDK pin to `6.0.0-alpha.1` and fixed the nightly build's workflow and drawing API issues.
+
 ## v3.2.0 — 99.9% Calibrated Accuracy, Zero False FPs, Fast Spam / CPS, Millisecond Timing & Mini/Gravity
 
 - 🎯 **99.9% Calibrated Accuracy & Zero False Frame Perfects**:
