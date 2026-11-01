@@ -29,6 +29,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           sdk: given
+          bindings-ref: 4e6c6d24b09502337f22c9db2aadb371fe7ee8ba
           combine: true
 
   combine:
