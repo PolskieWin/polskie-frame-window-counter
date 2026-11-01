@@ -129,11 +129,18 @@ void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, 
     if (!marker) return;
     marker->setPosition(position);
     marker->setScale(0.8f);
-    marker->setCascadeOpacityEnabled(true);
 
     auto ring = CCDrawNode::create();
     auto tint = ccc4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, 1.0f);
-    ring->drawCircle({ 0.0f, 0.0f }, 13.0f, ccc4f(0.0f, 0.0f, 0.0f, 0.0f), 2.0f, tint);
+    constexpr unsigned int segments = 64;
+    constexpr float pi = 3.14159265358979323846f;
+    CCPoint previous{ 13.0f, 0.0f };
+    for (unsigned int i = 1; i <= segments; i++) {
+        float angle = (2.0f * pi * i) / segments;
+        CCPoint next{ 13.0f * std::cos(angle), 13.0f * std::sin(angle) };
+        ring->drawSegment(previous, next, 1.0f, tint);
+        previous = next;
+    }
     marker->addChild(ring);
 
     auto label = CCLabelBMFont::create(fmt::format("{:.1f}", windowFrames).c_str(), "bigFont.fnt");
@@ -143,9 +150,11 @@ void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, 
     marker->addChild(label);
 
     worldLayer->addChild(marker, 999);
+    ring->runAction(CCFadeOut::create(0.35f));
+    label->runAction(CCFadeOut::create(0.35f));
     auto animation = CCSpawn::create(
         CCScaleTo::create(0.35f, 1.5f),
-        CCFadeOut::create(0.35f),
+        CCDelayTime::create(0.35f),
         nullptr
     );
     marker->runAction(CCSequence::create(animation, CCRemoveSelf::create(), nullptr));
