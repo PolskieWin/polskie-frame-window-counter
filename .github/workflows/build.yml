@@ -28,6 +28,7 @@ jobs:
         uses: geode-sdk/build-geode-mod@main
         with:
           target: ${{ matrix.target }}
+          sdk: nightly
           combine: true
 
   combine:
@@ -46,4 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: polskie.frame-window-counter
-          path: ${{ steps.combine.outputs.build-output }}
+          path: ${{ steps.combine.outputs.build-ou
+          tput }}
