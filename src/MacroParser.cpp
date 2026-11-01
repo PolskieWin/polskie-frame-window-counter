@@ -7,6 +7,7 @@
 #include <cctype>
 #include <cmath>
 #include <initializer_list>
+#include <limits>
 #include <Geode/utils/file.hpp>
 
 namespace fs = std::filesystem;
@@ -196,22 +197,16 @@ namespace {
         }
 
         double frame = 0.0;
-        bool hasFrame = numberField(value, {"frame", "frames", "tick", "ticks", "frameIndex", "frame_index"}, frame);
+        bool hasFrame = numberField(value, {"frame", "frames", "tick", "ticks", "frameIndex", "frame_index", "Frame", "f", "step"}, frame);
         double seconds = 0.0;
-        bool hasSeconds = numberField(value, {"timeSeconds", "time_seconds", "seconds"}, seconds);
-        if (!hasSeconds) hasSeconds = numberField(value, {"timestamp", "timestampSeconds", "timestamp_seconds"}, seconds);
+        bool hasSeconds = numberField(value, {"timeSeconds", "time_seconds", "seconds", "time", "t", "timestamp", "timestampSeconds", "timestamp_seconds"}, seconds);
         double milliseconds = 0.0;
         bool hasMilliseconds = numberField(value, {"timeMs", "time_ms", "timestampMs", "timestamp_ms"}, milliseconds);
 
-        if (!hasFrame && !hasSeconds && !hasMilliseconds) {
-            if (numberField(value, {"time", "t"}, frame)) {
-                hasFrame = true;
-            }
-        }
         if (!hasFrame && !hasSeconds && !hasMilliseconds) return false;
 
         bool hasState = false;
-        for (auto key : {"isPress", "is_pressed", "down", "pressed", "press", "state", "action", "type"}) {
+        for (auto key : {"isPress", "is_pressed", "down", "pressed", "press", "hold", "Hold", "state", "action", "type"}) {
             if (stateValue(value[key], input.isPress)) {
                 hasState = true;
                 break;
@@ -222,14 +217,23 @@ namespace {
         double player = 1.0;
         if (numberField(value, {"player", "playerIndex", "player_index", "playerNum", "player_num"}, player)) {
             input.player = (player == 2.0 || player == 1.0) ? static_cast<int>(player) : (player == 0.0 ? 1 : 2);
+        } else {
+            for (auto key : {"p2", "player2", "Player 2"}) {
+                auto playerTwo = value[key].asBool();
+                if (playerTwo && playerTwo.unwrap()) {
+                    input.player = 2;
+                    break;
+                }
+            }
         }
         double button = 1.0;
-        if (numberField(value, {"button", "buttonId", "button_id", "key"}, button)) {
+        if (numberField(value, {"button", "buttonId", "button_id", "key", "btn"}, button)) {
             input.button = static_cast<int>(button);
         } else {
-            auto buttonName = lower(stringField(value, {"button", "key"}));
+            auto buttonName = lower(stringField(value, {"button", "key", "btn"}));
             if (buttonName == "left") input.button = 2;
             else if (buttonName == "right") input.button = 3;
+            else if (buttonName == "jump" || buttonName == "click" || buttonName == "primary") input.button = 1;
         }
 
         double subFrame = 0.0;
@@ -263,7 +267,7 @@ namespace {
             return;
         }
 
-        for (auto key : {"events", "inputs", "actions", "clicks", "records", "timeline", "replay", "data", "keyframes"}) {
+        for (auto key : {"events", "inputs", "actions", "clicks", "records", "timeline", "replay", "data", "keyframes", "macro", "Echo Replay"}) {
             collectEvents(value[key], inputs, depth + 1);
         }
     }
@@ -289,8 +293,14 @@ namespace {
         if (!name.empty()) data.name = name;
 
         double fps = 0.0;
-        if (!numberField(root, {"recordFPS", "record_fps", "fps", "tickRate", "tick_rate"}, fps)) {
-            numberField(metadata, {"recordFPS", "record_fps", "fps", "tickRate", "tick_rate"}, fps);
+        if (!numberField(root, {"recordFPS", "record_fps", "fps", "framerate", "tickRate", "tick_rate"}, fps)) {
+            numberField(metadata, {"recordFPS", "record_fps", "fps", "framerate", "tickRate", "tick_rate"}, fps);
+        }
+        if (fps <= 0.0) {
+            double frameDelta = 0.0;
+            if (numberField(root, {"delta", "frameDelta", "frame_delta"}, frameDelta) && frameDelta > 0.0) {
+                fps = 1.0 / frameDelta;
+            }
         }
         if (fps > 0.0 && fps <= 10000.0) data.recordFPS = static_cast<float>(fps);
 
@@ -320,18 +330,33 @@ namespace {
 // ============================================================
 MacroParser::MacroFormat MacroParser::detectFormat(std::string const& path) {
     auto ext = lower(fs::path(path).extension().string());
-    if (ext == ".gdr2" || ext == ".gdr") {
-        return ext == ".gdr2" ? MacroFormat::ECLIPSE_GDR2 : MacroFormat::GDREPLAY;
-    }
-    if (ext == ".slc") return MacroFormat::SILICO;
-    if (ext == ".tcm") return MacroFormat::TASBOT_TCM;
-    if (ext == ".ybot") return MacroFormat::YBOT;
-
     auto filename = lower(fs::path(path).filename().string());
     if (filename.ends_with(".mhr.json")) {
         return MacroFormat::MHR_JSON;
     }
+
+    auto bytes = readFileBytes(path);
+    static const uint8_t mhrMagic[] = { 'H', 'A', 'C', 'K', 'P', 'R', 'O', 0x07 };
+    if (bytes.size() >= 3 && bytes[0] == 'G' && bytes[1] == 'D' && bytes[2] == 'R') {
+        return MacroFormat::ECLIPSE_GDR2;
+    }
+    if (bytes.size() >= sizeof(mhrMagic) && std::memcmp(bytes.data(), mhrMagic, sizeof(mhrMagic)) == 0) {
+        return MacroFormat::MHR_BINARY;
+    }
+    if (bytes.size() >= 4 && bytes[0] == 'R' && bytes[1] == 'P' && bytes[2] == 'L' && bytes[3] == 'Y') {
+        return MacroFormat::REPLAYBOT;
+    }
+
+    if (ext == ".gdr2") return MacroFormat::ECLIPSE_GDR2;
+    if (ext == ".gdr") return MacroFormat::GDREPLAY;
+    if (ext == ".slc") return MacroFormat::SILICO;
+    if (ext == ".tcm") return MacroFormat::TASBOT_TCM;
+    if (ext == ".ybot") return MacroFormat::YBOT;
     if (ext == ".mhr") {
+        auto first = std::find_if(bytes.begin(), bytes.end(), [](uint8_t ch) {
+            return !std::isspace(static_cast<unsigned char>(ch));
+        });
+        if (first != bytes.end() && (*first == '{' || *first == '[')) return MacroFormat::MHR_JSON;
         return MacroFormat::MHR_BINARY;
     }
     if (ext == ".rply" || ext == ".replay") return MacroFormat::REPLAYBOT;
@@ -391,6 +416,17 @@ MacroParser::MacroData MacroParser::parse(std::string const& path) {
             break;
     }
 
+    if ((!data.valid || data.inputs.empty()) && format == MacroFormat::JSON) {
+        auto tasBot = parseTasBot(path);
+        if (tasBot.valid && !tasBot.inputs.empty()) return tasBot;
+    }
+    if ((!data.valid || data.inputs.empty()) && format == MacroFormat::PLAIN_TEXT) {
+        auto xdBot = parseXdBot(path);
+        if (xdBot.valid && !xdBot.inputs.empty()) return xdBot;
+        auto xBot = parseXbot(path);
+        if (xBot.valid && !xBot.inputs.empty()) return xBot;
+    }
+
     return data;
 }
 
@@ -415,13 +451,179 @@ MacroParser::MacroData MacroParser::parseYBot(std::string const& path) {
 }
 
 MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
-    return parseEventFile(path, "Eclipse GDR2");
+    MacroData data;
+    data.name = fs::path(path).stem().string();
+    data.botName = "Eclipse Menu (GDR2)";
+
+    auto bytes = readFileBytes(path);
+    if (bytes.size() < 4 || bytes[0] != 'G' || bytes[1] != 'D' || bytes[2] != 'R') {
+        return parseEventFile(path, "Eclipse GDR2");
+    }
+
+    ByteReader reader(bytes, 3);
+    reader.varint(); // Format version
+
+    auto readVarString = [&reader]() {
+        auto length = reader.varint();
+        if (reader.bad || length > reader.left()) {
+            reader.bad = true;
+            return std::string();
+        }
+        return reader.str(static_cast<size_t>(length));
+    };
+
+    auto inputTag = readVarString();
+    data.author = readVarString();
+    readVarString(); // Description
+    reader.be<float>(); // Duration
+    reader.varint(); // Game version
+
+    double recordFPS = reader.be<double>();
+    data.recordFPS = (std::isfinite(recordFPS) && recordFPS >= 30.0 && recordFPS <= 2000.0)
+        ? static_cast<float>(recordFPS)
+        : 240.0f;
+
+    reader.varint(); // Seed
+    reader.varint(); // Coins
+    reader.varint(); // Low detail mode
+    bool platformer = reader.varint() != 0;
+    auto botName = readVarString();
+    if (!botName.empty()) data.botName = botName;
+    reader.varint(); // Bot version
+    reader.varint(); // Level ID
+    auto levelName = readVarString();
+    if (!levelName.empty()) data.name = levelName;
+
+    auto extensionSize = reader.varint();
+    if (reader.bad || extensionSize > reader.left()) {
+        data.error = "Corrupted or truncated GDR2 extension data";
+        return data;
+    }
+    reader.skip(static_cast<size_t>(extensionSize));
+
+    auto deathCount = reader.varint();
+    if (reader.bad || deathCount > reader.left()) {
+        data.error = "Corrupted or truncated GDR2 death data";
+        return data;
+    }
+    for (uint64_t death = 0; death < deathCount; death++) reader.varint();
+
+    auto inputCount = reader.varint();
+    auto playerOneInputsLeft = reader.varint();
+    if (reader.bad || inputCount > reader.left() || playerOneInputsLeft > inputCount) {
+        data.error = "Corrupted or truncated GDR2 input header";
+        return data;
+    }
+
+    data.inputs.reserve(static_cast<size_t>(inputCount));
+    int64_t previousFrame = 0;
+    for (uint64_t index = 0; index < inputCount; index++) {
+        auto packed = reader.varint();
+        if (reader.bad) break;
+
+        uint64_t frameDelta = platformer ? (packed >> 3) : (packed >> 1);
+        if (frameDelta > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+            reader.bad = true;
+            break;
+        }
+        int64_t frame = previousFrame + static_cast<int64_t>(frameDelta);
+        if (frame > std::numeric_limits<int>::max()) {
+            reader.bad = true;
+            break;
+        }
+
+        MacroInput input;
+        input.frame = static_cast<int>(frame);
+        input.subFrame = 0.0;
+        input.isPress = (packed & 1) != 0;
+        input.player = playerOneInputsLeft > 0 ? 1 : 2;
+        input.button = platformer ? static_cast<int>((packed >> 1) & 3) : 1;
+        if (input.button == 0) input.button = 1;
+        input.timeSeconds = input.frame / static_cast<double>(data.recordFPS);
+        input.hasTimeSeconds = true;
+        data.inputs.push_back(input);
+
+        if (!inputTag.empty()) {
+            auto tagSize = reader.varint();
+            if (reader.bad || tagSize > reader.left()) {
+                reader.bad = true;
+                break;
+            }
+            reader.skip(static_cast<size_t>(tagSize));
+        }
+
+        previousFrame = frame;
+        if (playerOneInputsLeft > 0 && --playerOneInputsLeft == 0) previousFrame = 0;
+    }
+
+    data.valid = !reader.bad && data.inputs.size() == inputCount && !data.inputs.empty();
+    if (!data.valid) {
+        data.inputs.clear();
+        data.error = "GDR2 input stream is truncated or malformed";
+    }
+    return data;
 }
 
 MacroParser::MacroData MacroParser::parseMHRBinary(std::string const& path) {
     MacroData data;
-    data.name = fs::path(path).filename().string();
-    data.error = "MegaHack binary replay records are not supported by this parser";
+    data.name = fs::path(path).stem().string();
+    data.botName = "MegaHack Replay (Binary)";
+
+    auto bytes = readFileBytes(path);
+    static const uint8_t magic[] = { 'H', 'A', 'C', 'K', 'P', 'R', 'O', 0x07 };
+    if (bytes.size() < 24 || std::memcmp(bytes.data(), magic, sizeof(magic)) != 0) {
+        data.error = "Invalid MegaHack binary replay header";
+        return data;
+    }
+
+    ByteReader reader(bytes, 8);
+    int32_t metadataSize = reader.le<int32_t>();
+    int32_t tps = reader.le<int32_t>();
+    if (reader.bad || metadataSize < 4) {
+        data.error = "Corrupted MegaHack replay header";
+        return data;
+    }
+    data.recordFPS = (tps >= 30 && tps <= 2000) ? static_cast<float>(tps) : 240.0f;
+
+    uint64_t eventHeaderOffset = 16ULL + static_cast<uint64_t>(metadataSize - 4) + 8ULL;
+    if (eventHeaderOffset > bytes.size() || bytes.size() - eventHeaderOffset < 8) {
+        data.error = "Truncated MegaHack replay metadata";
+        return data;
+    }
+    reader.pos = static_cast<size_t>(eventHeaderOffset);
+    uint32_t eventSize = reader.le<uint32_t>();
+    uint32_t eventCount = reader.le<uint32_t>();
+    if (reader.bad || eventSize < 8 || eventCount > reader.left() / eventSize) {
+        data.error = "Corrupted or truncated MegaHack event stream";
+        return data;
+    }
+
+    data.inputs.reserve(eventCount);
+    for (uint32_t index = 0; index < eventCount; index++) {
+        size_t eventStart = reader.pos;
+        reader.skip(2);
+        bool isPress = reader.u8() == 1;
+        bool isPlayerTwo = reader.u8() == 1;
+        int32_t frame = reader.le<int32_t>();
+        if (reader.bad || frame < 0) {
+            data.inputs.clear();
+            data.error = "Invalid MegaHack input event";
+            return data;
+        }
+
+        MacroInput input;
+        input.frame = frame;
+        input.timeSeconds = frame / static_cast<double>(data.recordFPS);
+        input.hasTimeSeconds = true;
+        input.isPress = isPress;
+        input.player = isPlayerTwo ? 2 : 1;
+        input.button = 1;
+        data.inputs.push_back(input);
+        reader.pos = eventStart + eventSize;
+    }
+
+    data.valid = !data.inputs.empty();
+    if (!data.valid) data.error = "No input events found in MegaHack binary replay";
     return data;
 }
 
@@ -430,19 +632,178 @@ MacroParser::MacroData MacroParser::parseMHRJson(std::string const& path) {
 }
 
 MacroParser::MacroData MacroParser::parseXdBot(std::string const& path) {
-    return parseEventFile(path, "xdBot");
+    MacroData data;
+    data.botName = "xdBot";
+    data.name = fs::path(path).stem().string();
+    std::ifstream input(path);
+    std::string line;
+    bool firstLine = true;
+    while (std::getline(input, line)) {
+        if (firstLine) {
+            firstLine = false;
+            try {
+                size_t parsedLength = 0;
+                float fps = std::stof(line, &parsedLength);
+                if (parsedLength == line.size() && std::isfinite(fps) && fps >= 30.0f && fps <= 2000.0f) {
+                    data.recordFPS = fps;
+                    continue;
+                }
+            } catch (...) {}
+        }
+        if (line.empty() || line[0] == '#') continue;
+        std::stringstream lineStream(line);
+        std::vector<std::string> fields;
+        std::string field;
+        while (std::getline(lineStream, field, '|')) fields.push_back(field);
+        if (fields.size() < 2) continue;
+
+        try {
+            MacroInput event;
+            event.frame = std::stoi(fields[0]);
+            auto state = lower(fields[1]);
+            event.isPress = (state == "1" || state == "true" || state == "press" || state == "down");
+            event.player = (fields.size() >= 4 && fields[3] == "0") ? 2 : 1;
+            event.button = (fields.size() >= 3) ? std::max(1, std::stoi(fields[2])) : 1;
+            event.timeSeconds = event.frame / static_cast<double>(data.recordFPS);
+            event.hasTimeSeconds = true;
+            data.inputs.push_back(event);
+        } catch (...) {
+            data.error = "Invalid xdBot input record";
+            data.inputs.clear();
+            return data;
+        }
+    }
+
+    data.valid = !data.inputs.empty();
+    if (!data.valid) data.error = "No xdBot input records found";
+    return data;
 }
 
 MacroParser::MacroData MacroParser::parseXbot(std::string const& path) {
-    return parseEventFile(path, "xBot");
+    MacroData data;
+    data.botName = "xBot";
+    data.name = fs::path(path).stem().string();
+    std::ifstream input(path);
+    std::string line;
+    while (std::getline(input, line)) {
+        if (line.empty() || line == "frames") continue;
+        if (lower(line).rfind("fps:", 0) == 0) {
+            try {
+                data.recordFPS = std::stof(line.substr(4));
+            } catch (...) {
+                data.error = "Invalid xBot FPS header";
+                return data;
+            }
+            continue;
+        }
+
+        int state = 0;
+        int frame = 0;
+        std::stringstream row(line);
+        if (!(row >> state >> frame)) continue;
+        if (frame < 0 || data.recordFPS <= 0.0f) continue;
+        MacroInput event;
+        event.frame = frame;
+        event.isPress = (state % 2) == 1;
+        event.player = state > 1 ? 2 : 1;
+        event.button = 1;
+        event.timeSeconds = frame / static_cast<double>(data.recordFPS);
+        event.hasTimeSeconds = true;
+        data.inputs.push_back(event);
+    }
+
+    data.valid = !data.inputs.empty();
+    if (!data.valid) data.error = "No xBot frame records found";
+    return data;
 }
 
 MacroParser::MacroData MacroParser::parseTasBot(std::string const& path) {
-    return parseEventFile(path, "TASBot JSON");
+    MacroData data;
+    data.botName = "TASBot";
+    data.name = fs::path(path).stem().string();
+    auto parsed = matjson::parse(readFileText(path));
+    if (!parsed) {
+        data.error = "Invalid TASBot JSON";
+        return data;
+    }
+    auto root = parsed.unwrap();
+    double fps = 0.0;
+    if (numberField(root, {"fps", "recordFPS", "record_fps"}, fps) && fps >= 30.0 && fps <= 2000.0) {
+        data.recordFPS = static_cast<float>(fps);
+    }
+
+    auto rows = root["macro"].asArray();
+    if (!rows) rows = root["inputs"].asArray();
+    if (!rows) {
+        data.error = "TASBot JSON has no macro/input array";
+        return data;
+    }
+    for (auto const& row : rows.unwrap()) {
+        double frame = 0.0;
+        if (!numberField(row, {"frame", "frames", "tick"}, frame) || frame < 0.0) continue;
+        for (int player = 1; player <= 2; player++) {
+            auto key = player == 1 ? "player_1" : "player_2";
+            auto playerData = row[key];
+            double click = 0.0;
+            if (!numberField(playerData, {"click", "state", "down"}, click) || click == 0.0) continue;
+            MacroInput event;
+            event.frame = static_cast<int>(frame);
+            event.subFrame = frame - std::floor(frame);
+            event.timeSeconds = frame / static_cast<double>(data.recordFPS);
+            event.hasTimeSeconds = true;
+            event.isPress = click == 1.0;
+            event.player = player;
+            event.button = 1;
+            data.inputs.push_back(event);
+        }
+    }
+
+    data.valid = !data.inputs.empty();
+    if (!data.valid) data.error = "No TASBot click events found";
+    return data;
 }
 
 MacroParser::MacroData MacroParser::parseReplayBot(std::string const& path) {
-    return parseEventFile(path, "ReplayBot");
+    auto bytes = readFileBytes(path);
+    if (bytes.size() < 4 || bytes[0] != 'R' || bytes[1] != 'P' || bytes[2] != 'L' || bytes[3] != 'Y') {
+        return parseEventFile(path, "ReplayBot");
+    }
+
+    MacroData data;
+    data.botName = "ReplayBot";
+    data.name = fs::path(path).stem().string();
+    if (bytes.size() < 10) {
+        data.error = "ReplayBot file is truncated";
+        return data;
+    }
+
+    ByteReader reader(bytes, 6);
+    float recordFPS = reader.le<float>();
+    data.recordFPS = (std::isfinite(recordFPS) && recordFPS >= 30.0f && recordFPS <= 2000.0f)
+        ? recordFPS
+        : 240.0f;
+    while (reader.has(5)) {
+        uint32_t frame = reader.le<uint32_t>();
+        uint8_t state = reader.u8();
+        if (reader.bad || frame > static_cast<uint32_t>(std::numeric_limits<int>::max())) {
+            data.inputs.clear();
+            data.error = "Invalid ReplayBot input event";
+            return data;
+        }
+
+        MacroInput input;
+        input.frame = static_cast<int>(frame);
+        input.timeSeconds = frame / static_cast<double>(data.recordFPS);
+        input.hasTimeSeconds = true;
+        input.isPress = (state & 1) != 0;
+        input.player = (state & 2) ? 2 : 1;
+        input.button = 1;
+        data.inputs.push_back(input);
+    }
+
+    data.valid = !reader.bad && reader.left() == 0 && !data.inputs.empty();
+    if (!data.valid) data.error = "No valid ReplayBot input events found";
+    return data;
 }
 
 MacroParser::MacroData MacroParser::parseJsonMacro(std::string const& path) {
@@ -453,6 +814,20 @@ MacroParser::MacroData MacroParser::parsePlainText(std::string const& path) {
     MacroData data;
     data.name = fs::path(path).filename().string();
     std::ifstream input(path);
+    std::string firstLine;
+    if (std::getline(input, firstLine)) {
+        auto normalized = lower(firstLine);
+        if (normalized.rfind("fps:", 0) == 0 || normalized == "frames") {
+            return parseXbot(path);
+        }
+        if (firstLine.find('|') != std::string::npos) {
+            input.clear();
+            input.seekg(0);
+            return parseXdBot(path);
+        }
+        input.clear();
+        input.seekg(0);
+    }
     std::string line;
     while (std::getline(input, line)) {
         for (auto& ch : line) {

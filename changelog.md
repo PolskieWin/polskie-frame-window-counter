@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.3.1 — Restore Binary Replay Decoders
+
+- Restored Eclipse GDR2 LEB128 parsing with metadata, player split, button state, and frame timing.
+- Restored MegaHack `HACKPRO` binary and ReplayBot `RPLY` binary readers with bounds checks.
+- Expanded JSON event aliases and restored TASBot, xBot, and xdBot record handling.
+- Binary variants of `.slc`, `.tcm`, and `.ybot` remain unsupported without format samples or specifications.
+
 ## v3.3.0 — Expanded FPS Range, HUD Palette, Input Rings & Replay Event Import
 
 - Added target FPS settings from 30 to 720, with presets for 30, 55, 60, 120, 144, 240, 360, and 720 FPS.

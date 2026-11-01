@@ -13,7 +13,7 @@ An in-game frame-window analyzer for Geometry Dash on Geode, with a NaN GD-inspi
 
 Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows** (64-bit):
 
-👉 **[Download Polskie Frame Window Counter v3.3.0 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
+👉 **[Download Polskie Frame Window Counter v3.3.1 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
 
 ---
 
@@ -46,7 +46,7 @@ Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows
 - 💍 **Ring / Orb FP Tracking**: Hook into `PlayerObject::ringJump` to detect and track orb hits.
 - 💫 **World-Space Input Rings**: Presses and releases create short-lived, bucket-colored rings with a one-decimal timing label.
 - 📊 **Live Timing Readout**: Shows the most recent window in milliseconds and its equivalent frequency in Hz.
-- 📁 **Replay Event Import**: File picker and folder scan include `.gdr`, `.slc`, `.tcm`, `.ybot`, and JSON event streams. These extensions are parsed as JSON event data; undocumented binary encodings are not decoded.
+- 📁 **Replay Import**: Eclipse `.gdr`/`.gdr2`, MegaHack `.mhr` binary/JSON, and ReplayBot `.rply` binary files have dedicated readers. `.gdr`, `.slc`, `.tcm`, `.ybot`, and generic JSON event streams accept structured JSON; undocumented binary variants are not decoded.
 - 🎮 **Gamemode Tracking**: Cube, Ship, Ball, UFO, Wave, Robot, Spider, and Swing.
 
 ---
@@ -72,5 +72,5 @@ The repository targets Geode SDK `6.0.0-alpha.1`. For a local Android build, ins
 ## 👨‍💻 Author
 
 - **Developer**: **Polskie**
-- **Version**: `v3.3.0`
+- **Version**: `v3.3.1`
 - **Geode SDK**: `6.0.0-alpha.1`
