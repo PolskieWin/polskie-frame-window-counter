@@ -8,7 +8,7 @@
     "name": "Polskie Frame Window Counter",
     "version": "v3.2.0",
     "developer": "Polskie",
-    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features 99.9% accurate physics (zero false F[...]
+    "description": "Frame window counter overlay inspired by NaN GD and tuned for gameplay analysis.",
     "tags": ["gameplay", "interface", "utility"],
     "resources": {
         "files": [
