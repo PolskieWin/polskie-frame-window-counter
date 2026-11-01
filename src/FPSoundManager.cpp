@@ -39,8 +39,9 @@ void FPSoundManager::playFPSound() {
 
     // Try to play custom sound from mod resources first
     auto customPath = mod->getResourcesDir() / ("fp_" + soundType + ".ogg");
-    if (std::filesystem::exists(customPath)) {
-        FMODAudioEngine::sharedEngine()->playEffect(customPath.string());
+    auto customPathFs = std::filesystem::path(customPath.string());
+    if (std::filesystem::exists(customPathFs)) {
+        FMODAudioEngine::sharedEngine()->playEffect(customPathFs.string());
     } else {
         // Fall back to GD's built-in sounds
         FMODAudioEngine::sharedEngine()->playEffect(soundFile);
@@ -71,8 +72,9 @@ void FPSoundManager::playRingFPSound() {
 
     // Special sound for ring frame-perfect hits
     auto customPath = mod->getResourcesDir() / "fp_ring.ogg";
-    if (std::filesystem::exists(customPath)) {
-        FMODAudioEngine::sharedEngine()->playEffect(customPath.string());
+    auto customPathFs = std::filesystem::path(customPath.string());
+    if (std::filesystem::exists(customPathFs)) {
+        FMODAudioEngine::sharedEngine()->playEffect(customPathFs.string());
     } else {
         FMODAudioEngine::sharedEngine()->playEffect("gold02.ogg");
     }
