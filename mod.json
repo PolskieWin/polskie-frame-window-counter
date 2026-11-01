@@ -1,5 +1,5 @@
 {
-    "geode": "v6.0.0-alpha.1",
+    "geode": "6.0.0-alpha.1",
     "gd": {
         "android": "*",
         "win": "*"
@@ -8,7 +8,7 @@
     "name": "Polskie Frame Window Counter",
     "version": "v3.2.0",
     "developer": "Polskie",
-    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features 99.9% accurate physics (zero false FPs), rolling CPS & swift click detection for fast spam, exact millisecond timing (e.g. 1-2: 0 (8.33ms), 9=8.33ms), mini gamemodes & 2.2 gravity triggers, CBF detection with 'CBF: X (Frame Perfect!)' flashes, Ring FP counters, NaN GD sounds, and universal bot macro import & live analysis for Eclipse Menu (.gdr2), MegaHack (.mhr binary & JSON), xdBot, xBot, TASBot, and JSON.",
+    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features 99.9% accurate physics (zero false F[...]
     "tags": ["gameplay", "interface", "utility"],
     "resources": {
         "files": [
