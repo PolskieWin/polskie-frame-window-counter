@@ -52,6 +52,7 @@ public:
         float playerX;
         float playerY;
         int frameWindow;        // 0, 1, 2, ...
+        double windowFrames;    // Continuous timing window, including sub-frames
         double msTiming;        // exact ms: e.g. 8.33ms
         bool isHold;            // press or release
         int player;             // 1 or 2
@@ -126,6 +127,7 @@ public:
 
     // Last click / FP timing details
     int getLastClickWindow() const;
+    double getLastClickWindowFrames() const;
     double getLastClickMS() const;
     bool isLastClickSwift() const;
     std::string getLastClickText() const;
@@ -167,7 +169,7 @@ private:
     FrameWindowAnalyzer() = default;
 
     int calculateFrameWindow(PlayerObject* player, float dt);
-    int calculateMacroFrameWindow(int frameDelta, float macroFPS);
+    double calculateMacroFrameWindow(double frameDelta, float macroFPS);
     double estimateGapLeniency(GameState const& state);
     void captureGameState(PlayerObject* player);
     Gamemode detectGamemode(PlayerObject* player);
@@ -192,6 +194,7 @@ private:
 
     // Last click details
     int m_lastClickWindow = 0;
+    double m_lastClickWindowFrames = 0.0;
     double m_lastClickMS = 0.0;
     bool m_lastClickSwift = false;
 
@@ -224,4 +227,5 @@ private:
     bool m_macroLoaded = false;
     std::string m_macroName;
     float m_macroFPS = 240.0f;
+    MacroParser::MacroData m_loadedMacro;
 };

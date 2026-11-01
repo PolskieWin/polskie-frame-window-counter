@@ -25,6 +25,7 @@ protected:
     CCMenuItemToggler* m_higherToggle = nullptr;
     CCMenuItemToggler* m_10plusToggle = nullptr;
     CCMenuItemToggler* m_msHzToggle = nullptr;
+    CCMenuItemToggler* m_clickRingsToggle = nullptr;
 
     // New 99.9% precision & MS toggles
     CCMenuItemToggler* m_bucketMSToggle = nullptr;
@@ -43,6 +44,7 @@ protected:
     void onToggleHigher(CCObject* sender);
     void onToggle10Plus(CCObject* sender);
     void onToggleMsHz(CCObject* sender);
+    void onToggleClickRings(CCObject* sender);
     void onToggleBucketMS(CCObject* sender);
     void onToggleLastMS(CCObject* sender);
     void onToggleCPS(CCObject* sender);

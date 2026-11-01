@@ -3,10 +3,30 @@
 #include <fmt/format.h>
 #include <Geode/utils/file.hpp>
 #include <Geode/utils/async.hpp>
+#include <algorithm>
+#include <iterator>
+
+namespace {
+    constexpr int kTargetFPSValues[] = { 30, 55, 60, 120, 144, 240, 360, 720 };
+
+    int stepTargetFPS(int current, bool increase) {
+        auto begin = std::begin(kTargetFPSValues);
+        auto end = std::end(kTargetFPSValues);
+        auto value = std::lower_bound(begin, end, current);
+
+        if (increase) {
+            if (value == end || *value <= current) ++value;
+            return value == end ? kTargetFPSValues[std::size(kTargetFPSValues) - 1] : *value;
+        }
+        if (value == begin) return *value;
+        if (value == end || *value >= current) --value;
+        return *value;
+    }
+}
 
 FWCSettingsPopup* FWCSettingsPopup::create() {
     auto ret = new FWCSettingsPopup();
-    if (ret && ret->init(420.f, 325.f)) {
+    if (ret && ret->init(420.f, 350.f)) {
         ret->autorelease();
         return ret;
     }
@@ -144,6 +164,13 @@ bool FWCSettingsPopup::init(float width, float height) {
     );
     startY -= rowH + 2.f;
 
+    m_clickRingsToggle = createRobTopToggle(
+        "In-World Click Rings", mod->getSettingValue<bool>("show-click-rings"),
+        menu_selector(FWCSettingsPopup::onToggleClickRings),
+        35.f, startY
+    );
+    startY -= rowH + 2.f;
+
     // ── FPS Selector ──
     auto fpsTitle = CCLabelBMFont::create("Analysis FPS:", "bigFont.fnt");
     fpsTitle->setScale(0.24f);
@@ -172,7 +199,7 @@ bool FWCSettingsPopup::init(float width, float height) {
     startY -= rowH + 4.f;
 
     // ── Section: Bot Macro Import ──
-    auto macroTitle = CCLabelBMFont::create("-- BOT MACRO IMPORT (ECLIPSE / MEGAHACK / JSON) --", "goldFont.fnt");
+    auto macroTitle = CCLabelBMFont::create("-- REPLAY IMPORT (GDR / SLC / TCM / YBOT / JSON) --", "goldFont.fnt");
     macroTitle->setScale(0.26f);
     macroTitle->setPosition({ centerX, startY });
     m_mainLayer->addChild(macroTitle);
@@ -263,6 +290,11 @@ void FWCSettingsPopup::onToggleMsHz(CCObject*) {
     if (auto overlay = FrameWindowOverlay::get()) overlay->refreshSettings();
 }
 
+void FWCSettingsPopup::onToggleClickRings(CCObject*) {
+    auto mod = Mod::get();
+    mod->setSettingValue("show-click-rings", !mod->getSettingValue<bool>("show-click-rings"));
+}
+
 void FWCSettingsPopup::onToggleBucketMS(CCObject*) {
     auto mod = Mod::get();
     mod->setSettingValue("show-bucket-ms", !mod->getSettingValue<bool>("show-bucket-ms"));
@@ -290,7 +322,7 @@ void FWCSettingsPopup::onToggleGravityMini(CCObject*) {
 void FWCSettingsPopup::onIncreaseFPS(CCObject*) {
     auto mod = Mod::get();
     int fps = static_cast<int>(mod->getSettingValue<int64_t>("analysis-fps"));
-    if (fps < 360) fps += 60;
+    fps = stepTargetFPS(fps, true);
     mod->setSettingValue("analysis-fps", static_cast<int64_t>(fps));
     m_fpsLabel->setString(fmt::format("{}Hz", fps).c_str());
     FrameWindowAnalyzer::get()->setAnalysisFPS(fps);
@@ -300,7 +332,7 @@ void FWCSettingsPopup::onIncreaseFPS(CCObject*) {
 void FWCSettingsPopup::onDecreaseFPS(CCObject*) {
     auto mod = Mod::get();
     int fps = static_cast<int>(mod->getSettingValue<int64_t>("analysis-fps"));
-    if (fps > 60) fps -= 60;
+    fps = stepTargetFPS(fps, false);
     mod->setSettingValue("analysis-fps", static_cast<int64_t>(fps));
     m_fpsLabel->setString(fmt::format("{}Hz", fps).c_str());
     FrameWindowAnalyzer::get()->setAnalysisFPS(fps);
@@ -311,7 +343,7 @@ void FWCSettingsPopup::onPickMacroFile(CCObject*) {
     file::FilePickOptions options;
     options.filters.push_back({
         "Geometry Dash Replays & Macros",
-        { "*.gdr2", "*.gdr", "*.mhr", "*.mhr.json", "*.json", "*.txt", "*.csv", "*.rply" }
+        { "*.gdr2", "*.gdr", "*.slc", "*.tcm", "*.ybot", "*.mhr", "*.mhr.json", "*.json", "*.txt", "*.csv", "*.rply", "*.replay" }
     });
 
     async::spawn(
@@ -342,7 +374,7 @@ void FWCSettingsPopup::onScanMacroFolder(CCObject*) {
     if (m_macroFiles.empty()) {
         FLAlertLayer::create(
             "No Macro Files Found",
-            "No macro files (.gdr2, .mhr, .json) found in default paths.\n\n"
+            "No supported replay or macro files found in default paths.\n\n"
             "Click 'Select File...' to browse your device storage, or place files in:\n"
             "- GD save folder/macros/\n"
             "- GD save folder/replays/\n"
@@ -350,7 +382,7 @@ void FWCSettingsPopup::onScanMacroFolder(CCObject*) {
             "- /sdcard/GeometryDash/macros/\n"
             "- /storage/emulated/0/Download/\n"
 #endif
-            "\nSupported: Eclipse (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON",
+            "\nSupported event streams: .gdr, .slc, .tcm, .ybot, .json, .txt, .csv",
             "OK"
         )->show();
         return;
@@ -402,7 +434,7 @@ void FWCSettingsPopup::loadMacroFile(std::string const& path) {
     } else {
         FLAlertLayer::create(
             "Macro Load Error",
-            fmt::format("Failed to parse macro file:\n{}\n\nDetails: {}\n\nSupported: Eclipse (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON",
+            fmt::format("Failed to parse macro file:\n{}\n\nDetails: {}\n\nSupported event streams: .gdr, .slc, .tcm, .ybot, .json, .txt, .csv",
                 std::filesystem::path(path).filename().string(),
                 data.error.empty() ? "No valid click actions found" : data.error
             ).c_str(),

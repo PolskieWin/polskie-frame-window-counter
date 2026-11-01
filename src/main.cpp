@@ -9,7 +9,7 @@
  * - CBF count with "CBF: X (Frame Perfect!)" dynamic status
  * - Ring / Orb Frame Perfect detection & sounds
  * - Macro calculation & live playback input tracking (Works with Bots!)
- * - Universal Macro Import: Eclipse (.gdr2), MegaHack (.mhr binary & JSON), xdBot, xBot, TASBot, JSON
+ * - Replay event import: .gdr, .slc, .tcm, .ybot, and generic JSON streams
  * - Full RobTop-style UI settings popup in 100% English
  */
 
@@ -28,6 +28,17 @@
 using namespace geode::prelude;
 
 static FrameWindowOverlay* g_overlay = nullptr;
+
+static void recordFWCInput(CCNode* objectLayer, PlayerObject* player, bool isPress, int playerNum) {
+    if (!player) return;
+    auto analyzer = FrameWindowAnalyzer::get();
+    auto clickCount = analyzer->getClicks().size();
+    analyzer->onPlayerInput(isPress, player, playerNum);
+    if (analyzer->getClicks().size() == clickCount) return;
+
+    FrameWindowOverlay::spawnClickMarker(objectLayer, player->getPosition(), analyzer->getLastClickWindowFrames());
+    if (auto overlay = FrameWindowOverlay::get()) overlay->updateDisplay();
+}
 
 // ============================================================
 // PlayLayer hooks — Lifecycle, UI layer attachment & updates
@@ -94,14 +105,14 @@ class $modify(FWCPlayLayer, PlayLayer) {
             bool holdingP1 = player->m_holdingButtons[1] || player->m_jumpBuffered;
             if (holdingP1 && !m_fields->m_p1WasHolding) {
                 if (!analyzer->hasRecordedThisFrame(1, true)) {
-                    analyzer->onPlayerInput(true, player, 1);
+                    recordFWCInput(this->m_objectLayer, player, true, 1);
                     if (analyzer->isLastClickCBF() && g_overlay) {
                         g_overlay->triggerCBFFlash();
                     }
                 }
             } else if (!holdingP1 && m_fields->m_p1WasHolding) {
                 if (!analyzer->hasRecordedThisFrame(1, false)) {
-                    analyzer->onPlayerInput(false, player, 1);
+                    recordFWCInput(this->m_objectLayer, player, false, 1);
                 }
             }
             m_fields->m_p1WasHolding = holdingP1;
@@ -112,14 +123,14 @@ class $modify(FWCPlayLayer, PlayLayer) {
             bool holdingP2 = p2->m_holdingButtons[1] || p2->m_jumpBuffered;
             if (holdingP2 && !m_fields->m_p2WasHolding) {
                 if (!analyzer->hasRecordedThisFrame(2, true)) {
-                    analyzer->onPlayerInput(true, p2, 2);
+                    recordFWCInput(this->m_objectLayer, p2, true, 2);
                     if (analyzer->isLastClickCBF() && g_overlay) {
                         g_overlay->triggerCBFFlash();
                     }
                 }
             } else if (!holdingP2 && m_fields->m_p2WasHolding) {
                 if (!analyzer->hasRecordedThisFrame(2, false)) {
-                    analyzer->onPlayerInput(false, p2, 2);
+                    recordFWCInput(this->m_objectLayer, p2, false, 2);
                 }
             }
             m_fields->m_p2WasHolding = holdingP2;
@@ -195,7 +206,8 @@ class $modify(FWCPlayerObject, PlayerObject) {
             if (analyzer->isTracking()) {
                 auto pl = PlayLayer::get();
                 int playerNum = (pl && this == pl->m_player2) ? 2 : 1;
-                analyzer->onPlayerInput(true, this, playerNum);
+                auto playLayer = PlayLayer::get();
+                recordFWCInput(playLayer ? playLayer->m_objectLayer : nullptr, this, true, playerNum);
                 if (analyzer->isLastClickCBF() && g_overlay) {
                     g_overlay->triggerCBFFlash();
                 }
@@ -213,7 +225,8 @@ class $modify(FWCPlayerObject, PlayerObject) {
             if (analyzer->isTracking()) {
                 auto pl = PlayLayer::get();
                 int playerNum = (pl && this == pl->m_player2) ? 2 : 1;
-                analyzer->onPlayerInput(false, this, playerNum);
+                auto playLayer = PlayLayer::get();
+                recordFWCInput(playLayer ? playLayer->m_objectLayer : nullptr, this, false, playerNum);
             }
         }
         return res;
@@ -239,7 +252,7 @@ class $modify(FWCGameLayer, GJBaseGameLayer) {
         PlayerObject* player = isPlayer1 ? this->m_player1 : this->m_player2;
 
         if (player) {
-            analyzer->onPlayerInput(down, player, playerNum);
+            recordFWCInput(this->m_objectLayer, player, down, playerNum);
 
             if (analyzer->isLastClickCBF() && g_overlay) {
                 g_overlay->triggerCBFFlash();
@@ -287,5 +300,5 @@ class $modify(FWCPauseLayer, PauseLayer) {
 
 $on_mod(Loaded) {
     log::info("[Polskie Frame Window Counter] Loaded successfully! Author: Polskie");
-    log::info("[Polskie FWC] Formats supported: Eclipse Menu (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON");
+    log::info("[Polskie FWC] Supports JSON event streams: .gdr, .slc, .tcm, .ybot, and generic JSON");
 }

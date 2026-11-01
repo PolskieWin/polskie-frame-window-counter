@@ -1,7 +1,21 @@
 #include "FrameWindowOverlay.hpp"
 #include <fmt/format.h>
+#include <cmath>
 
 static FrameWindowOverlay* s_instance = nullptr;
+
+static ccColor3B windowColor(double windowFrames) {
+    int window = static_cast<int>(std::round(windowFrames));
+    if (window >= 11) return { 150, 80, 255 };
+    if (window >= 8) return { 100, 130, 255 };
+    if (window >= 6) return { 60, 200, 255 };
+    if (window >= 5) return { 50, 230, 180 };
+    if (window >= 4) return { 80, 255, 100 };
+    if (window >= 3) return { 255, 240, 50 };
+    if (window >= 2) return { 255, 160, 40 };
+    if (window >= 1) return { 255, 90, 40 };
+    return { 255, 40, 40 };
+}
 
 FrameWindowOverlay* FrameWindowOverlay::get() {
     return s_instance;
@@ -37,14 +51,15 @@ CCLabelBMFont* FrameWindowOverlay::createPusabLabel(const char* text, float scal
 void FrameWindowOverlay::setupBuckets() {
     m_buckets.clear();
 
-    // 1:1 NaN GD bucket order from video (download(4).mp4) — top to bottom:
-    m_buckets.push_back({ "9-10:", 9,  10,   { 138, 95,  249 }, nullptr }); // #8A5FF9 Purple
-    m_buckets.push_back({ "7-8:",  7,  8,    { 89,  201, 215 }, nullptr }); // #59C9D7 Light Blue / Cyan
-    m_buckets.push_back({ "5-6:",  5,  6,    { 119, 223, 145 }, nullptr }); // #77DF91 Lime / Mint Green
-    m_buckets.push_back({ "3-4:",  3,  4,    { 208, 213, 59  }, nullptr }); // #D0D53B Pastel Yellow
-    m_buckets.push_back({ "1-2:",  1,  2,    { 232, 160, 32  }, nullptr }); // #E8A020 Amber / Orange (8.33ms)
-    m_buckets.push_back({ "0-1:",  0,  1,    { 239, 79,  80  }, nullptr }); // #EF4F50 Frame Perfect Pink/Red (4.17ms)
-    m_buckets.push_back({ "10+:",  11, 9999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Violet (optional overflow)
+    m_buckets.push_back({ "10+:",  11, 9999, { 150, 80, 255 }, nullptr });
+    m_buckets.push_back({ "8-10:", 8,  10,   { 100, 130, 255 }, nullptr });
+    m_buckets.push_back({ "6-8:",  6,  7,    { 60, 200, 255 }, nullptr });
+    m_buckets.push_back({ "5-6:",  5,  5,    { 50, 230, 180 }, nullptr });
+    m_buckets.push_back({ "4-5:",  4,  4,    { 80, 255, 100 }, nullptr });
+    m_buckets.push_back({ "3-4:",  3,  3,    { 255, 240, 50 }, nullptr });
+    m_buckets.push_back({ "2-3:",  2,  2,    { 255, 160, 40 }, nullptr });
+    m_buckets.push_back({ "1-2:",  1,  1,    { 255, 90, 40 }, nullptr });
+    m_buckets.push_back({ "0-1:",  0,  0,    { 255, 40, 40 }, nullptr });
 }
 
 bool FrameWindowOverlay::init() {
@@ -88,8 +103,8 @@ bool FrameWindowOverlay::init() {
     m_ringLabel = createPusabLabel("RINGS FP: 0/0", 0.27f * scale, { 255, 200, 50 }, 0, 0);
 
     // MS & Hz stats (Razy / NaN GD style)
-    m_msLabel = createPusabLabel("0.00MS", 0.27f * scale, { 243, 242, 246 }, 0, 0);
-    m_hzLabel = createPusabLabel("240Hz", 0.27f * scale, { 245, 243, 246 }, 0, 0);
+    m_msLabel = createPusabLabel("0.00ms", 0.27f * scale, { 243, 242, 246 }, 0, 0);
+    m_hzLabel = createPusabLabel("0Hz", 0.27f * scale, { 245, 243, 246 }, 0, 0);
 
     // Gamemode & Total Clicks
     m_modeLabel = createPusabLabel("MODE: CUBE", 0.26f * scale, { 100, 255, 150 }, 0, 0);
@@ -104,6 +119,36 @@ bool FrameWindowOverlay::init() {
 
 void FrameWindowOverlay::triggerCBFFlash() {
     m_cbfFlashTimer = 1.0f;
+}
+
+void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, double windowFrames) {
+    if (!worldLayer || !Mod::get()->getSettingValue<bool>("show-click-rings")) return;
+
+    auto color = windowColor(windowFrames);
+    auto marker = CCLayer::create();
+    if (!marker) return;
+    marker->setPosition(position);
+    marker->setScale(0.8f);
+    marker->setCascadeOpacityEnabled(true);
+
+    auto ring = CCDrawNode::create();
+    auto tint = ccc4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, 1.0f);
+    ring->drawCircle({ 0.0f, 0.0f }, 13.0f, ccc4f(0.0f, 0.0f, 0.0f, 0.0f), 2.0f, tint);
+    marker->addChild(ring);
+
+    auto label = CCLabelBMFont::create(fmt::format("{:.1f}", windowFrames).c_str(), "bigFont.fnt");
+    label->setScale(0.30f);
+    label->setColor(color);
+    label->setPosition({ 0.0f, 18.0f });
+    marker->addChild(label);
+
+    worldLayer->addChild(marker, 999);
+    auto animation = CCSpawn::create(
+        CCScaleTo::create(0.35f, 1.5f),
+        CCFadeOut::create(0.35f),
+        nullptr
+    );
+    marker->runAction(CCSequence::create(animation, CCRemoveSelf::create(), nullptr));
 }
 
 void FrameWindowOverlay::update(float dt) {
@@ -145,13 +190,12 @@ void FrameWindowOverlay::updateDisplay() {
     for (auto& bucket : m_buckets) {
         if (!bucket.labelNode) continue;
 
-        // Higher window filter (9-10)
-        if (!showHigher && bucket.minFrames >= 9) {
+        // Higher window filter (8+)
+        if (!showHigher && bucket.minFrames >= 8) {
             bucket.labelNode->setVisible(false);
             continue;
         }
 
-        // 10+ overflow bucket filter
         if (!show10Plus && bucket.minFrames >= 11) {
             bucket.labelNode->setVisible(false);
             continue;
@@ -162,21 +206,7 @@ void FrameWindowOverlay::updateDisplay() {
         // Count clicks falling into this bucket
         int count = 0;
         for (auto const& [win, c] : dist) {
-            if (bucket.minFrames >= 11) {
-                if (win >= 11) count += c;
-            } else if (bucket.label == "9-10:") {
-                if (win == 9 || win == 10) count += c;
-            } else if (bucket.label == "7-8:") {
-                if (win == 7 || win == 8) count += c;
-            } else if (bucket.label == "5-6:") {
-                if (win == 5 || win == 6) count += c;
-            } else if (bucket.label == "3-4:") {
-                if (win == 3 || win == 4) count += c;
-            } else if (bucket.label == "1-2:") {
-                if (win == 1 || win == 2) count += c;
-            } else if (bucket.label == "0-1:") {
-                if (win == 0 || win == 1) count += c;
-            }
+            if (win >= bucket.minFrames && win <= bucket.maxFrames) count += c;
         }
 
         if (showBucketMS) {
@@ -242,12 +272,10 @@ void FrameWindowOverlay::updateDisplay() {
         m_msLabel->setVisible(true);
         m_hzLabel->setVisible(true);
 
-        double avgWindow = analyzer->getAverageWindow();
-        int fps = analyzer->getAnalysisFPS();
-        double ms = (avgWindow > 0.0) ? (avgWindow / static_cast<double>(fps)) * 1000.0 : (1000.0 / fps);
-        double effHz = (ms > 0.0) ? (1000.0 / ms) : static_cast<double>(fps);
+        double ms = analyzer->getLastClickMS();
+        double effHz = (ms > 0.0) ? (1000.0 / ms) : 0.0;
 
-        m_msLabel->setString(fmt::format("{:.2f}MS", ms).c_str());
+        m_msLabel->setString(fmt::format("{:.2f}ms", ms).c_str());
         m_hzLabel->setString(fmt::format("{:.0f}Hz", effHz).c_str());
     } else {
         m_msLabel->setVisible(false);
@@ -335,15 +363,15 @@ void FrameWindowOverlay::updatePosition() {
         }
     }
 
+    if (showMsHz && m_msLabel && m_msLabel->isVisible()) {
+        visibleLabels.push_back(m_msLabel);
+        if (m_hzLabel && m_hzLabel->isVisible()) visibleLabels.push_back(m_hzLabel);
+    }
     if (showLastMS && m_lastClickLabel && m_lastClickLabel->isVisible()) visibleLabels.push_back(m_lastClickLabel);
     if (showCPS && m_cpsLabel && m_cpsLabel->isVisible()) visibleLabels.push_back(m_cpsLabel);
     if (showGravityMini && m_gravLabel && m_gravLabel->isVisible()) visibleLabels.push_back(m_gravLabel);
     if (showCBF && m_cbfLabel && m_cbfLabel->isVisible()) visibleLabels.push_back(m_cbfLabel);
     if (showRings && m_ringLabel && m_ringLabel->isVisible()) visibleLabels.push_back(m_ringLabel);
-    if (showMsHz && m_msLabel && m_msLabel->isVisible()) {
-        visibleLabels.push_back(m_msLabel);
-        if (m_hzLabel && m_hzLabel->isVisible()) visibleLabels.push_back(m_hzLabel);
-    }
     if (showGamemode && m_modeLabel && m_modeLabel->isVisible()) visibleLabels.push_back(m_modeLabel);
     if (m_clicksLabel && m_clicksLabel->isVisible()) visibleLabels.push_back(m_clicksLabel);
 

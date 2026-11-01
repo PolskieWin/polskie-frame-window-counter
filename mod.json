@@ -24,11 +24,11 @@
         },
         "analysis-fps": {
             "name": "Analysis FPS",
-            "description": "Target physics FPS for frame window analysis (240Hz is standard for NaN GD)",
+            "description": "Target analysis FPS from 30 to 720",
             "type": "int",
             "default": 240,
-            "min": 60,
-            "max": 360
+            "min": 30,
+            "max": 720
         },
         "overlay-scale": {
             "name": "Overlay Scale",
@@ -110,9 +110,15 @@
         },
         "show-ms-hz": {
             "name": "Show MS & Hz",
-            "description": "Display average window time in milliseconds (MS) and effective refresh rate (Hz)",
+            "description": "Show the latest input window in milliseconds and equivalent frequency",
             "type": "bool",
-            "default": false
+            "default": true
+        },
+        "show-click-rings": {
+            "name": "In-World Click Rings",
+            "description": "Show temporary colored world-space rings for press and release inputs",
+            "type": "bool",
+            "default": true
         },
         "show-gamemode": {
             "name": "Show Gamemode",
@@ -134,7 +140,7 @@
         },
         "macro-analysis-mode": {
             "name": "Macro Analysis Mode",
-            "description": "When a bot macro (Eclipse .gdr2, MegaHack .mhr, JSON) is loaded, analyze and display inputs from the macro",
+            "description": "Analyze supported replay and macro event streams immediately after import",
             "type": "bool",
             "default": true
         }

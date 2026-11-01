@@ -10,7 +10,8 @@ using namespace geode::prelude;
  * MacroParser
  * 
  * Comprehensive universal parser for Geometry Dash macros & replays:
- * - Eclipse Menu (.gdr2, .gdr) — binary LEB128 replay format
+ * - GDReplay (.gdr), Silico (.slc), TasBot (.tcm), yBot / zBot (.ybot) JSON event streams
+ * - Eclipse Menu (.gdr2) and MegaHack binary payloads are identified but require format-specific decoding
  * - MegaHack Replay Binary (.mhr) — 'HACKPRO\x07' format
  * - MegaHack Replay JSON (.mhr.json, .mhr)
  * - xdBot (.txt / .csv / .json)
@@ -24,6 +25,9 @@ class MacroParser {
 public:
     struct MacroInput {
         int frame = 0;          // Frame index
+        double subFrame = 0.0;  // Fractional position within the frame
+        double timeSeconds = 0.0;
+        bool hasTimeSeconds = false;
         bool isPress = true;    // true = press, false = release
         int player = 1;         // 1 = player1, 2 = player2
         int button = 1;         // 1 = jump, 2 = left, 3 = right
@@ -41,7 +45,11 @@ public:
     };
 
     enum class MacroFormat {
-        ECLIPSE_GDR2,   // Eclipse Menu .gdr2 / .gdr
+        ECLIPSE_GDR2,   // Eclipse Menu .gdr2
+        GDREPLAY,        // GDReplay .gdr JSON event stream
+        SILICO,          // Silico .slc event stream
+        TASBOT_TCM,      // TasBot .tcm event stream
+        YBOT,            // yBot / zBot .ybot action stream
         MHR_BINARY,     // MegaHack Replay Binary (.mhr)
         MHR_JSON,       // MegaHack Replay JSON (.mhr.json)
         XDBOT,          // xdBot .txt / .csv / .json
@@ -57,6 +65,11 @@ public:
     static MacroData parse(std::string const& path);
 
     static MacroData parseEclipseGDR2(std::string const& path);
+    static MacroData parseGDReplay(std::string const& path);
+    static MacroData parseSilico(std::string const& path);
+    static MacroData parseTasBotTCM(std::string const& path);
+    static MacroData parseYBot(std::string const& path);
+    static MacroData parseEventJson(std::string const& path);
     static MacroData parseMHRBinary(std::string const& path);
     static MacroData parseMHRJson(std::string const& path);
     static MacroData parseXdBot(std::string const& path);

@@ -22,6 +22,7 @@ void FrameWindowAnalyzer::reset() {
     m_cbfCount = 0;
     m_lastClickCBF = false;
     m_lastClickWindow = 0;
+    m_lastClickWindowFrames = 0.0;
     m_lastClickMS = 0.0;
     m_lastClickSwift = false;
     m_maxCPS = 0.0;
@@ -40,6 +41,7 @@ void FrameWindowAnalyzer::reset() {
     m_gameState = GameState();
     m_macroLoaded = false;
     m_macroName.clear();
+    m_loadedMacro = MacroParser::MacroData();
 
     // Reset per-gamemode stats
     for (int i = 0; i < static_cast<int>(Gamemode::COUNT); i++) {
@@ -185,6 +187,7 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
     click.playerX = player->getPositionX();
     click.playerY = player->getPositionY();
     click.frameWindow = frameWindow;
+    click.windowFrames = static_cast<double>(frameWindow);
     click.msTiming = msTiming;
     click.isHold = isPress;
     click.player = playerNum;
@@ -204,6 +207,7 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
     m_windowDistribution[frameWindow]++;
 
     m_lastClickWindow = frameWindow;
+    m_lastClickWindowFrames = static_cast<double>(frameWindow);
     m_lastClickMS = msTiming;
     m_lastClickSwift = isSwift;
 
@@ -280,12 +284,13 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
     reset();
 
     m_macroLoaded = true;
+    m_loadedMacro = macro;
     m_macroName = macro.name.empty() ? "Imported Macro" : macro.name;
     m_macroFPS = (macro.recordFPS > 0.0f) ? macro.recordFPS : 240.0f;
 
     if (macro.inputs.empty()) return;
 
-    // Filter press events for analysis
+    // Analyze press intervals independently for each player, retaining sub-frame times.
     std::vector<MacroParser::MacroInput> presses;
     for (auto const& inp : macro.inputs) {
         if (inp.isPress) {
@@ -293,27 +298,48 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
         }
     }
 
+    std::stable_sort(presses.begin(), presses.end(), [](auto const& a, auto const& b) {
+        if (a.hasTimeSeconds && b.hasTimeSeconds) return a.timeSeconds < b.timeSeconds;
+        if (a.frame != b.frame) return a.frame < b.frame;
+        return a.subFrame < b.subFrame;
+    });
+
     if (presses.empty()) return;
 
     for (size_t i = 0; i < presses.size(); i++) {
-        int frameDelta;
-        if (i + 1 < presses.size()) {
-            frameDelta = presses[i + 1].frame - presses[i].frame;
-        } else {
-            frameDelta = (i > 0) ? (presses[i].frame - presses[i - 1].frame)
-                                 : static_cast<int>(m_macroFPS);
+        auto eventTime = [this](MacroParser::MacroInput const& input) {
+            if (input.hasTimeSeconds) return input.timeSeconds;
+            return (input.frame + input.subFrame) / static_cast<double>(m_macroFPS);
+        };
+
+        double deltaSeconds = 1.0 / static_cast<double>(m_macroFPS);
+        for (size_t next = i + 1; next < presses.size(); next++) {
+            if (presses[next].player == presses[i].player) {
+                deltaSeconds = std::max(0.0, eventTime(presses[next]) - eventTime(presses[i]));
+                break;
+            }
+        }
+        if (deltaSeconds <= 0.0) {
+            for (size_t previous = i; previous > 0; previous--) {
+                if (presses[previous - 1].player == presses[i].player) {
+                    deltaSeconds = std::max(0.0, eventTime(presses[i]) - eventTime(presses[previous - 1]));
+                    break;
+                }
+            }
         }
 
-        int frameWindow = calculateMacroFrameWindow(frameDelta, m_macroFPS);
-        double msTiming = framesToMS(frameWindow);
-        bool isCBF = (frameWindow <= 1);
+        double windowFrames = calculateMacroFrameWindow(deltaSeconds * m_macroFPS, m_macroFPS);
+        int frameWindow = static_cast<int>(std::round(windowFrames));
+        double msTiming = framesToMS(windowFrames);
+        bool isCBF = (windowFrames <= 1.0);
 
         ClickData click;
-        click.timestamp = static_cast<double>(presses[i].frame) / m_macroFPS;
+        click.timestamp = eventTime(presses[i]);
         click.frame = presses[i].frame;
         click.playerX = 0.0f;
         click.playerY = 0.0f;
         click.frameWindow = frameWindow;
+        click.windowFrames = windowFrames;
         click.msTiming = msTiming;
         click.isHold = true;
         click.player = presses[i].player;
@@ -332,11 +358,15 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
         m_totalClicks++;
         m_windowDistribution[frameWindow]++;
         if (isCBF) m_cbfCount++;
+        m_lastClickCBF = isCBF;
     }
 
     if (!presses.empty()) {
-        m_levelTime = static_cast<double>(presses.back().frame) / m_macroFPS;
+        m_levelTime = presses.back().hasTimeSeconds
+            ? presses.back().timeSeconds
+            : (presses.back().frame + presses.back().subFrame) / m_macroFPS;
         m_lastClickWindow = m_clicks.back().frameWindow;
+        m_lastClickWindowFrames = m_clicks.back().windowFrames;
         m_lastClickMS = m_clicks.back().msTiming;
     }
 
@@ -354,20 +384,9 @@ int FrameWindowAnalyzer::calculateFrameWindow(PlayerObject* player, float dt) {
     return std::max(0, std::min(50, frameWindow));
 }
 
-int FrameWindowAnalyzer::calculateMacroFrameWindow(int frameDelta, float macroFPS) {
-    if (frameDelta <= 0) return 0;
-    double timeSeconds = static_cast<double>(frameDelta) / static_cast<double>(macroFPS);
-    int windowAtAnalysisFPS = static_cast<int>(std::round(timeSeconds * m_analysisFPS));
-
-    // High precision mapping into NaN GD buckets
-    if (windowAtAnalysisFPS <= 2)  return 0; // 0-1f (Frame Perfect!)
-    if (windowAtAnalysisFPS <= 4)  return 1; // 1-2f (8.33ms)
-    if (windowAtAnalysisFPS <= 7)  return 3; // 3-4f (16.67ms)
-    if (windowAtAnalysisFPS <= 11) return 5; // 5-6f (25.00ms)
-    if (windowAtAnalysisFPS <= 16) return 7; // 7-8f (33.33ms)
-    if (windowAtAnalysisFPS <= 22) return 9; // 9-10f (41.67ms)
-
-    return std::min(50, windowAtAnalysisFPS);
+double FrameWindowAnalyzer::calculateMacroFrameWindow(double frameDelta, float macroFPS) {
+    if (frameDelta <= 0.0 || macroFPS <= 0.0f) return 0.0;
+    return (frameDelta / static_cast<double>(macroFPS)) * m_analysisFPS;
 }
 
 double FrameWindowAnalyzer::estimateGapLeniency(GameState const& state) {
@@ -516,6 +535,10 @@ int FrameWindowAnalyzer::getLastClickWindow() const {
     return m_lastClickWindow;
 }
 
+double FrameWindowAnalyzer::getLastClickWindowFrames() const {
+    return m_lastClickWindowFrames;
+}
+
 double FrameWindowAnalyzer::getLastClickMS() const {
     return m_lastClickMS;
 }
@@ -556,7 +579,7 @@ double FrameWindowAnalyzer::getPrecisionScore() const {
     if (m_clicks.empty() || m_levelTime <= 0.0) return 0.0;
     double totalLogProb = 0.0;
     for (auto const& click : m_clicks) {
-        double prob = static_cast<double>(click.frameWindow) / static_cast<double>(m_analysisFPS);
+        double prob = click.windowFrames / static_cast<double>(m_analysisFPS);
         prob = std::max(0.0001, std::min(1.0, prob));
         totalLogProb += std::log(prob);
     }
@@ -566,7 +589,7 @@ double FrameWindowAnalyzer::getPrecisionScore() const {
 double FrameWindowAnalyzer::getAverageWindow() const {
     if (m_clicks.empty()) return 0.0;
     double sum = 0.0;
-    for (auto const& c : m_clicks) sum += c.frameWindow;
+    for (auto const& c : m_clicks) sum += c.windowFrames;
     return sum / m_clicks.size();
 }
 
@@ -611,7 +634,13 @@ FrameWindowAnalyzer::Gamemode FrameWindowAnalyzer::getCurrentGamemode() const {
 
 int FrameWindowAnalyzer::getAnalysisFPS() const { return m_analysisFPS; }
 void FrameWindowAnalyzer::setAnalysisFPS(int fps) {
-    m_analysisFPS = std::max(60, std::min(360, fps));
+    int targetFPS = std::max(30, std::min(720, fps));
+    if (m_analysisFPS == targetFPS) return;
+    m_analysisFPS = targetFPS;
+    if (m_macroLoaded) {
+        auto macro = m_loadedMacro;
+        analyzeMacro(macro);
+    }
 }
 
 std::vector<FrameWindowAnalyzer::ClickData> const& FrameWindowAnalyzer::getClicks() const {
