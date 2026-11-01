@@ -88,4 +88,3 @@ void FPSoundManager::update(float dt) {
         if (m_cooldown < 0.0f) m_cooldown = 0.0f;
     }
 }
-

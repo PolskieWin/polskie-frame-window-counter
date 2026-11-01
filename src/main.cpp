@@ -63,7 +63,6 @@ class $modify(FWCPlayLayer, PlayLayer) {
 
         g_overlay = FrameWindowOverlay::create();
         if (g_overlay) {
-            // Attach to m_uiLayer so the overlay stays strictly pinned to the screen HUD
             if (this->m_uiLayer) {
                 this->m_uiLayer->addChild(g_overlay, 99999);
             } else {
@@ -91,7 +90,6 @@ class $modify(FWCPlayLayer, PlayLayer) {
         float levelLength = this->m_levelLength;
         analyzer->onUpdate(dt, player, levelLength);
 
-        // Additional bot-detection safety net: detect holding state transitions
         if (player) {
             bool holdingP1 = player->m_holdingButtons[1] || player->m_jumpBuffered;
             if (holdingP1 && !m_fields->m_p1WasHolding) {
@@ -173,12 +171,8 @@ class $modify(FWCPlayLayer, PlayLayer) {
     }
 };
 
-// ============================================================
-// PlayerObject hook — Ring / Orb FP & Bot Input Detection (Windows)
-// ============================================================
 #ifndef GEODE_IS_ANDROID
 class $modify(FWCPlayerObject, PlayerObject) {
-
     void ringJump(RingObject* ring, bool skipCheck) {
         PlayerObject::ringJump(ring, skipCheck);
 
@@ -227,11 +221,7 @@ class $modify(FWCPlayerObject, PlayerObject) {
 };
 #endif
 
-// ============================================================
-// GJBaseGameLayer hooks — Live Input Tracking (Works with Bots!)
-// ============================================================
 class $modify(FWCGameLayer, GJBaseGameLayer) {
-
     void handleButton(bool down, int button, bool isPlayer1) {
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
 
@@ -251,7 +241,6 @@ class $modify(FWCGameLayer, GJBaseGameLayer) {
         if (player) {
             analyzer->onPlayerInput(down, player, playerNum);
 
-            // If it was frame-perfect, trigger flash in overlay
             if (analyzer->isLastClickCBF() && g_overlay) {
                 g_overlay->triggerCBFFlash();
             }
@@ -259,11 +248,7 @@ class $modify(FWCGameLayer, GJBaseGameLayer) {
     }
 };
 
-// ============================================================
-// PauseLayer hook — RobTop style Pusab button
-// ============================================================
 class $modify(FWCPauseLayer, PauseLayer) {
-
     void customSetup() {
         PauseLayer::customSetup();
 
@@ -276,7 +261,6 @@ class $modify(FWCPauseLayer, PauseLayer) {
         menu->setPosition({ 0.f, 0.f });
         this->addChild(menu, 100);
 
-        // RobTop style button with Pusab font
         auto btnSpr = ButtonSprite::create("FWC", "bigFont.fnt", "GJ_button_01.png", 0.75f);
         btnSpr->setScale(0.70f);
 
@@ -285,7 +269,6 @@ class $modify(FWCPauseLayer, PauseLayer) {
             menu_selector(FWCPauseLayer::onFWCSettings)
         );
 
-        // Position in pause menu
         btn->setPosition({
             winSize.width - 45.f,
             winSize.height - 35.f
@@ -302,9 +285,6 @@ class $modify(FWCPauseLayer, PauseLayer) {
     }
 };
 
-// ============================================================
-// Mod entry point
-// ============================================================
 $on_mod(Loaded) {
     log::info("[Polskie Frame Window Counter] Loaded successfully! Author: Polskie");
     log::info("[Polskie FWC] Formats supported: Eclipse Menu (.gdr2), MegaHack (.mhr), xdBot, xBot, TASBot, JSON");

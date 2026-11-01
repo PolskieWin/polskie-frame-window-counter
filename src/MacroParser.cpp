@@ -232,5 +232,3 @@ MacroParser::MacroData MacroParser::parse(std::string const& path) {
 
     return data;
 }
-
-// [rest of file intentionally unchanged for brevity]
