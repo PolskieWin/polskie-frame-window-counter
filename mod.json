@@ -1,5 +1,5 @@
 {
-    "geode": "5.11.2",
+    "geode": "v6.0.0-alpha.1",
     "gd": {
         "android": "*",
         "win": "*"
