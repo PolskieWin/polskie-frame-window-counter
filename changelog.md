@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.3.3 — Stop Unverified Frame-Perfect Counts
+
+- Removed the heuristic that inferred physics margins from player state or macro press spacing; unmeasured inputs no longer enter FP or bucket counts.
+- Updated timing summaries and labels to show unknown when a source does not provide an explicit margin.
+- Anchored input markers using player world coordinates converted into the object layer, and replaced the full-screen marker layer with a small node.
+- Scoped ring activations to the same player and frame and discard unmatched ring state on the next frame.
+
 ## v3.3.2 — GDReplay Binary and MessagePack Support
 
 - Added raw GDReplay GDR binary decoding for metadata, varint input events, player split, platformer buttons, and extension records.

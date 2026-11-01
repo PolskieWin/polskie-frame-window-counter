@@ -13,7 +13,7 @@ An in-game frame-window analyzer for Geometry Dash on Geode, with a NaN GD-inspi
 
 Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows** (64-bit):
 
-👉 **[Download Polskie Frame Window Counter v3.3.2 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
+👉 **[Download Polskie Frame Window Counter v3.3.3 (.geode)](https://github.com/PolskieWin/polskie-frame-window-counter/releases/latest/download/polskie.frame-window-counter.geode)**
 
 ---
 
@@ -37,15 +37,15 @@ Get the unified `.geode` package for **Android** (32-bit & 64-bit) and **Windows
 
 - 🎯 **Target FPS from 30 to 720**: Analysis timing scales with the selected target rate, with presets for 30, 55, 60, 120, 144, 240, 360, and 720 FPS.
 - ⚡ **Fast Spam & CPS Tracking**: Live rolling Clicks Per Second (`CPS: X.X MAX: Y.Y`) and micro-tap timing for swift jitter/butterfly clicks (`<= 2f` / `8.33ms`).
-- ⏱️ **Exact Millisecond Timing (`like 9=8.33ms`)**: View millisecond values on each bucket (e.g. `1-2: 0 (8.33ms)`) and real-time last click timing (`FP: 1f (4.17ms)!` or `LAST: 2f (8.33ms)`).
+- ⏱️ **Measured Millisecond Timing**: Timing and frame-perfect counts are shown only when the input source supplies an explicit window measurement; otherwise the HUD reports unknown instead of guessing from click spacing.
 - 🔄 **Mini Gamemodes & GD 2.2 Gravity Scaling**: Full physics adjustments for Mini vehicles (Cube, Wave $63.4^\circ$, Ship $1.35\times$ fall gravity, Ball, UFO, Robot, Spider, Swing) and active 2.2 custom gravity triggers (`m_gravityMod`).
 - 🔤 **Pusab Font (`bigFont.fnt`)**: All HUD labels, numbers, and stats match RobTop's visual style.
 - 🎯 **1:1 NaN GD Layout**: Pinned strictly to the top-left screen corner (`{0.0f, 1.0f}`) with borderless transparent look.
-- ⚡ **Dynamic CBF (Click Before Frame)**: Displays `CBF: X (Frame Perfect!)` with a yellow flash upon hitting a frame-perfect window.
-- 🔔 **Frame Perfect Sounds**: Plays NaN GD chime / ding on frame-perfect clicks.
+- ⚡ **Verified CBF (Click Before Frame)**: CBF counts and sounds require an explicit measured margin of at most one frame; unmeasured live clicks are never labeled frame-perfect.
+- 🔔 **Frame Perfect Sounds**: Plays on measured frame-perfect events only.
 - 💍 **Ring / Orb FP Tracking**: Hook into `PlayerObject::ringJump` to detect and track orb hits.
-- 💫 **World-Space Input Rings**: Presses and releases create short-lived, bucket-colored rings with a one-decimal timing label.
-- 📊 **Live Timing Readout**: Shows the most recent window in milliseconds and its equivalent frequency in Hz.
+- 💫 **World-Space Input Rings**: Presses and releases create short-lived rings positioned in object-layer coordinates; measured margins get one-decimal labels and unmeasured events show `?`.
+- 📊 **Live Timing Readout**: Shows milliseconds and equivalent frequency when the latest event has a measured window, otherwise `--`.
 - 📁 **Replay Import**: GDReplay `.gdr`/`.gdr2` accepts raw GDR binary, JSON, or MessagePack. MegaHack `.mhr` binary/JSON and ReplayBot `.rply` binary have dedicated readers. `.slc`, `.tcm`, and `.ybot` accept JSON event streams; undocumented binary variants are not decoded.
 - 🎮 **Gamemode Tracking**: Cube, Ship, Ball, UFO, Wave, Robot, Spider, and Swing.
 
@@ -72,5 +72,5 @@ The repository targets Geode SDK `6.0.0-alpha.1`. For a local Android build, ins
 ## 👨‍💻 Author
 
 - **Developer**: **Polskie**
-- **Version**: `v3.3.2`
+- **Version**: `v3.3.3`
 - **Geode SDK**: `6.0.0-alpha.1`

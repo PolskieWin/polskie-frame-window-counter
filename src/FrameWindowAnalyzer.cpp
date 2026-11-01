@@ -21,8 +21,9 @@ void FrameWindowAnalyzer::reset() {
     m_totalClicks = 0;
     m_cbfCount = 0;
     m_lastClickCBF = false;
-    m_lastClickWindow = 0;
+    m_lastClickWindow = -1;
     m_lastClickWindowFrames = 0.0;
+    m_lastClickHasWindowMeasurement = false;
     m_lastClickMS = 0.0;
     m_lastClickSwift = false;
     m_maxCPS = 0.0;
@@ -30,6 +31,8 @@ void FrameWindowAnalyzer::reset() {
     m_totalRingHits = 0;
     m_lastRingFP = false;
     m_pendingRingHit = false;
+    m_pendingRingPlayer = 1;
+    m_pendingRingFrame = -1;
     m_levelTime = 0.0;
     m_lastClickTime = 0.0;
     m_lastClickFrame = 0;
@@ -130,6 +133,11 @@ void FrameWindowAnalyzer::onUpdate(float dt, PlayerObject* player, float levelLe
         m_recentClickTimes.pop_front();
     }
 
+    if (m_pendingRingHit && m_currentFrame > m_pendingRingFrame) {
+        m_pendingRingHit = false;
+        m_pendingRingFrame = -1;
+    }
+
     // Update sound cooldown
     FPSoundManager::get()->update(dt);
 }
@@ -158,42 +166,28 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
 
     captureGameState(player);
 
-    // Calculate real rolling CPS
-    double curCPS = getCurrentCPS();
-    if (curCPS > m_maxCPS) {
-        m_maxCPS = curCPS;
-    }
+    double curCPS = isPress ? getCurrentCPS() : 0.0;
+    if (isPress && curCPS > m_maxCPS) m_maxCPS = curCPS;
+    bool isSwift = !isPress && m_lastHoldDuration > 0 && m_lastHoldDuration <= 2;
+    bool isSpam = isPress && curCPS >= 10.0;
 
-    // Swift click detection: ultra-short micro-tap (hold duration <= 2 frames / 8.33ms)
-    bool isSwift = (m_lastHoldDuration > 0 && m_lastHoldDuration <= 2);
-    bool isSpam = (curCPS >= 10.0);
-
-    // True physical frame window calculation
-    int frameWindow = calculateFrameWindow(player, 1.0f / static_cast<float>(m_analysisFPS));
-    double msTiming = framesToMS(frameWindow);
-
-    // True CBF detection (0 to 1 frame window <= 4.17ms at 240Hz)
-    bool isCBF = (frameWindow <= 1);
-    bool isRingHit = m_pendingRingHit;
-    bool isRingFP = isRingHit && isCBF;
-
-    // Clear the ring flag
-    m_pendingRingHit = false;
-
-    // Build click data
+    // Live input events contain no obstacle-margin measurement, so do not
+    // synthesize a frame-perfect window from player state or click spacing.
     ClickData click;
     click.timestamp = m_levelTime;
     click.frame = m_currentFrame;
     click.playerX = player->getPositionX();
     click.playerY = player->getPositionY();
-    click.frameWindow = frameWindow;
-    click.windowFrames = static_cast<double>(frameWindow);
-    click.msTiming = msTiming;
+    click.frameWindow = -1;
+    click.windowFrames = 0.0;
+    click.hasWindowMeasurement = false;
+    click.msTiming = 0.0;
     click.isHold = isPress;
     click.player = playerNum;
-    click.isCBF = isCBF;
-    click.isRingHit = isRingHit;
-    click.isRingFP = isRingFP;
+    click.isCBF = false;
+    click.isRingHit = isPress && m_pendingRingHit &&
+        m_pendingRingFrame == m_currentFrame && m_pendingRingPlayer == playerNum;
+    click.isRingFP = false;
     click.isSwiftClick = isSwift;
     click.isFastSpam = isSpam;
     click.cpsAtClick = curCPS;
@@ -203,55 +197,24 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
     click.gamemode = m_gameState.currentMode;
 
     m_clicks.push_back(click);
-    m_totalClicks++;
-    m_windowDistribution[frameWindow]++;
-
-    m_lastClickWindow = frameWindow;
-    m_lastClickWindowFrames = static_cast<double>(frameWindow);
-    m_lastClickMS = msTiming;
+    m_lastClickCBF = false;
+    m_lastRingFP = false;
+    m_lastClickWindow = -1;
+    m_lastClickWindowFrames = 0.0;
+    m_lastClickHasWindowMeasurement = false;
+    m_lastClickMS = 0.0;
     m_lastClickSwift = isSwift;
-
-    // Update CBF count
-    if (isCBF) {
-        m_cbfCount++;
-        m_lastClickCBF = true;
-
-        // Play authentic frame-perfect sound
-        FPSoundManager::get()->playFPSound();
-
-        log::info("[Polskie FWC] TRUE FRAME PERFECT! CBF #{} ({:.2f}ms) at {:.2f}s ({}{})",
-            m_cbfCount, msTiming, m_levelTime,
-            m_gameState.isMini ? "Mini " : "",
-            gamemodeName(click.gamemode));
-    } else {
-        m_lastClickCBF = false;
-
-        // Play near-FP sound for tight 1-2f windows (8.33ms)
-        if (frameWindow <= 2) {
-            FPSoundManager::get()->playNearFPSound();
-        }
+    if (click.isRingHit) {
+        m_pendingRingHit = false;
+        m_pendingRingFrame = -1;
     }
 
-    // Update ring FP
-    if (isRingHit) {
-        m_totalRingHits++;
-        if (isRingFP) {
-            m_ringFPCount++;
-            m_lastRingFP = true;
-            FPSoundManager::get()->playRingFPSound();
-            log::info("[Polskie FWC] RING FRAME PERFECT! ({:.2f}ms) at {:.2f}s", msTiming, m_levelTime);
-        } else {
-            m_lastRingFP = false;
+    if (isPress) {
+        m_totalClicks++;
+        int modeIdx = static_cast<int>(click.gamemode);
+        if (modeIdx >= 0 && modeIdx < static_cast<int>(Gamemode::COUNT)) {
+            m_gamemodeStats[modeIdx].totalClicks++;
         }
-    }
-
-    // Update per-gamemode stats
-    int modeIdx = static_cast<int>(click.gamemode);
-    if (modeIdx >= 0 && modeIdx < static_cast<int>(Gamemode::COUNT)) {
-        m_gamemodeStats[modeIdx].totalClicks++;
-        m_gamemodeStats[modeIdx].windowDistribution[frameWindow]++;
-        if (isCBF) m_gamemodeStats[modeIdx].cbfCount++;
-        if (isRingFP) m_gamemodeStats[modeIdx].ringFPCount++;
     }
 
     m_lastClickTime = m_levelTime;
@@ -261,19 +224,23 @@ void FrameWindowAnalyzer::onPlayerInput(bool isPress, PlayerObject* player, int 
 // ============================================================
 // Ring jump hook — called when orb/ring is triggered
 // ============================================================
-void FrameWindowAnalyzer::onRingJump(PlayerObject* player, RingObject* ring) {
+void FrameWindowAnalyzer::onRingJump(PlayerObject* player, RingObject* ring, int playerNum) {
     if (!m_isTracking || !player) return;
 
+    m_totalRingHits++;
+    m_lastRingFP = false;
     m_pendingRingHit = true;
+    m_pendingRingPlayer = playerNum;
+    m_pendingRingFrame = m_currentFrame;
 
-    if (ring) {
-        float px = player->getPositionX();
-        float py = player->getPositionY();
-        float rx = ring->getPositionX();
-        float ry = ring->getPositionY();
-        m_lastRingDistance = std::sqrt((px - rx) * (px - rx) + (py - ry) * (py - ry));
-    } else {
-        m_lastRingDistance = 0.0f;
+    for (auto click = m_clicks.rbegin(); click != m_clicks.rend(); ++click) {
+        if (click->frame != m_currentFrame) break;
+        if (click->player == playerNum && click->isHold) {
+            click->isRingHit = true;
+            m_pendingRingHit = false;
+            m_pendingRingFrame = -1;
+            break;
+        }
     }
 }
 
@@ -312,26 +279,12 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
             return (input.frame + input.subFrame) / static_cast<double>(m_macroFPS);
         };
 
-        double deltaSeconds = 1.0 / static_cast<double>(m_macroFPS);
-        for (size_t next = i + 1; next < presses.size(); next++) {
-            if (presses[next].player == presses[i].player) {
-                deltaSeconds = std::max(0.0, eventTime(presses[next]) - eventTime(presses[i]));
-                break;
-            }
-        }
-        if (deltaSeconds <= 0.0) {
-            for (size_t previous = i; previous > 0; previous--) {
-                if (presses[previous - 1].player == presses[i].player) {
-                    deltaSeconds = std::max(0.0, eventTime(presses[i]) - eventTime(presses[previous - 1]));
-                    break;
-                }
-            }
-        }
-
-        double windowFrames = calculateMacroFrameWindow(deltaSeconds * m_macroFPS, m_macroFPS);
-        int frameWindow = static_cast<int>(std::round(windowFrames));
-        double msTiming = framesToMS(windowFrames);
-        bool isCBF = (windowFrames <= 1.0);
+        bool hasWindow = presses[i].hasWindowFrames &&
+            std::isfinite(presses[i].windowFrames) && presses[i].windowFrames >= 0.0;
+        double windowFrames = hasWindow ? presses[i].windowFrames : 0.0;
+        int frameWindow = hasWindow ? static_cast<int>(std::round(windowFrames)) : -1;
+        double msTiming = hasWindow ? framesToMS(windowFrames) : 0.0;
+        bool isCBF = hasWindow && windowFrames <= 1.0;
 
         ClickData click;
         click.timestamp = eventTime(presses[i]);
@@ -340,6 +293,7 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
         click.playerY = 0.0f;
         click.frameWindow = frameWindow;
         click.windowFrames = windowFrames;
+        click.hasWindowMeasurement = hasWindow;
         click.msTiming = msTiming;
         click.isHold = true;
         click.player = presses[i].player;
@@ -356,141 +310,25 @@ void FrameWindowAnalyzer::analyzeMacro(MacroParser::MacroData const& macro) {
 
         m_clicks.push_back(click);
         m_totalClicks++;
-        m_windowDistribution[frameWindow]++;
-        if (isCBF) m_cbfCount++;
+        if (hasWindow) {
+            m_windowDistribution[frameWindow]++;
+            if (isCBF) m_cbfCount++;
+        }
         m_lastClickCBF = isCBF;
+        m_lastClickWindow = frameWindow;
+        m_lastClickWindowFrames = windowFrames;
+        m_lastClickHasWindowMeasurement = hasWindow;
+        m_lastClickMS = msTiming;
     }
 
     if (!presses.empty()) {
         m_levelTime = presses.back().hasTimeSeconds
             ? presses.back().timeSeconds
             : (presses.back().frame + presses.back().subFrame) / m_macroFPS;
-        m_lastClickWindow = m_clicks.back().frameWindow;
-        m_lastClickWindowFrames = m_clicks.back().windowFrames;
-        m_lastClickMS = m_clicks.back().msTiming;
     }
 
     log::info("[Polskie FWC] Macro loaded: '{}', {} clicks, {} CBF, avg {:.2f}f",
         m_macroName, m_totalClicks, m_cbfCount, getAverageWindow());
-}
-
-// ============================================================
-// 99.9% Calibrated Physics Engine (NO false FPs, full mini & gravity)
-// ============================================================
-int FrameWindowAnalyzer::calculateFrameWindow(PlayerObject* player, float dt) {
-    if (!player) return 10;
-    double leniency = estimateGapLeniency(m_gameState);
-    int frameWindow = static_cast<int>(std::round(leniency * m_analysisFPS));
-    return std::max(0, std::min(50, frameWindow));
-}
-
-double FrameWindowAnalyzer::calculateMacroFrameWindow(double frameDelta, float macroFPS) {
-    if (frameDelta <= 0.0 || macroFPS <= 0.0f) return 0.0;
-    return (frameDelta / static_cast<double>(macroFPS)) * m_analysisFPS;
-}
-
-double FrameWindowAnalyzer::estimateGapLeniency(GameState const& state) {
-    // Calibrated GD 2.2 base leniency (~8 frames for normal unconstrained jump)
-    double baseLeniency = 8.5 / m_analysisFPS;
-
-    // Exact GD 2.2 horizontal speed scales
-    float speed = (state.playerSpeed <= 0.0f) ? 0.9f : state.playerSpeed;
-    double speedFactor = 1.0;
-    if      (speed <= 0.75f) speedFactor = 1.24;  // 0.5x speed (251.16 units/s)
-    else if (speed <= 0.95f) speedFactor = 1.00;  // 1.0x speed (311.58 units/s)
-    else if (speed <= 1.15f) speedFactor = 0.80;  // 2.0x speed (387.42 units/s)
-    else if (speed <= 1.45f) speedFactor = 0.66;  // 3.0x speed (468.00 units/s)
-    else                     speedFactor = 0.54;  // 4.0x speed (576.00 units/s)
-
-    // Vertical velocity factor
-    float absVelY = std::abs(state.velocityY);
-    double velFactor = 1.0;
-    if      (absVelY > 750.0f) velFactor = 0.35;
-    else if (absVelY > 550.0f) velFactor = 0.50;
-    else if (absVelY > 380.0f) velFactor = 0.68;
-    else if (absVelY > 200.0f) velFactor = 0.82;
-    else if (absVelY > 100.0f) velFactor = 0.92;
-
-    // Gamemode-specific precision calculation with full Mini Mode physics
-    double modeFactor = 1.0;
-    switch (state.currentMode) {
-        case Gamemode::WAVE: {
-            // Mini wave vertical speed is 2x faster (63.4 degree slope vs 45 degree slope)
-            modeFactor = state.isMini ? 0.38 : 0.72;
-            break;
-        }
-        case Gamemode::SHIP: {
-            // Micro-tap straight flying precision
-            if (m_lastHoldDuration > 0 && m_lastHoldDuration <= 2) {
-                modeFactor = state.isMini ? 0.22 : 0.32; // Swift straight-fly tap!
-            } else {
-                modeFactor = state.isMini ? 0.55 : 0.70;
-            }
-            break;
-        }
-        case Gamemode::SWING: {
-            modeFactor = state.isMini ? 0.50 : 0.65;
-            break;
-        }
-        case Gamemode::UFO: {
-            modeFactor = state.isMini ? 0.55 : 0.75;
-            break;
-        }
-        case Gamemode::ROBOT: {
-            modeFactor = (m_lastHoldDuration > 0 && m_lastHoldDuration <= 2) ? 0.35 : 0.80;
-            break;
-        }
-        case Gamemode::BALL: {
-            modeFactor = state.isMini ? 0.65 : 0.82;
-            break;
-        }
-        case Gamemode::SPIDER: {
-            modeFactor = 0.80;
-            break;
-        }
-        case Gamemode::CUBE: {
-            // Mini cube jump height is only 1.2 blocks vs 2.1 blocks normal
-            if (state.isMini) {
-                modeFactor = state.isOnGround ? 0.65 : 0.45;
-            } else {
-                modeFactor = state.isOnGround ? 0.92 : 0.60;
-            }
-            break;
-        }
-        default: break;
-    }
-
-    // Mini mode scaling (0.6x hitbox size, 1.25x fall gravity)
-    double sizeFactor = state.isMini ? 0.78 : 1.0;
-
-    // Gravity scaling: higher gravity tightens arcs (1/sqrt(mod)), lower gravity widens arcs
-    double gravMod = (state.gravityMod > 0.05f) ? state.gravityMod : 1.0f;
-    double gravFactor = 1.0 / std::sqrt(gravMod);
-    if (state.isUpsideDown) {
-        gravFactor *= 0.96; // Slight inverted entry bias
-    }
-
-    // Orb / Ring precision: exact 30-unit radial trigger boundary calculation
-    double ringFactor = 1.0;
-    if (m_pendingRingHit) {
-        if (m_lastRingDistance >= 28.5f) {
-            ringFactor = 0.12; // Outer perimeter boundary = TRUE 0-1f Frame Perfect! (<= 4.17ms)
-        } else if (m_lastRingDistance >= 25.0f) {
-            ringFactor = 0.24; // Near-boundary hit = 1-2f window (8.33ms)
-        } else if (m_lastRingDistance >= 20.0f) {
-            ringFactor = 0.48; // Intermediate hit = 3-4f window (16.67ms)
-        } else {
-            ringFactor = 0.90; // Center hit = 5+ frames
-        }
-    }
-
-    // Combine all physical factors (NO artificial spam penalty, zero false FPs)
-    double leniency = baseLeniency * speedFactor * velFactor * modeFactor *
-                      sizeFactor * gravFactor * ringFactor;
-
-    double minLen = 0.0;
-    double maxLen = 50.0 / m_analysisFPS;
-    return std::max(minLen, std::min(maxLen, leniency));
 }
 
 // ============================================================
@@ -539,6 +377,10 @@ double FrameWindowAnalyzer::getLastClickWindowFrames() const {
     return m_lastClickWindowFrames;
 }
 
+bool FrameWindowAnalyzer::hasLastClickWindowMeasurement() const {
+    return m_lastClickHasWindowMeasurement;
+}
+
 double FrameWindowAnalyzer::getLastClickMS() const {
     return m_lastClickMS;
 }
@@ -549,8 +391,9 @@ bool FrameWindowAnalyzer::isLastClickSwift() const {
 
 std::string FrameWindowAnalyzer::getLastClickText() const {
     if (m_totalClicks == 0) return "LAST: --";
+    if (!m_lastClickHasWindowMeasurement) return "LAST: ?";
 
-    if (m_lastClickWindow <= 1) {
+    if (m_lastClickWindow >= 0 && m_lastClickWindow <= 1) {
         return fmt::format("FP: {}f ({:.2f}ms)!", m_lastClickWindow, m_lastClickMS);
     }
     return fmt::format("LAST: {}f ({:.2f}ms)", m_lastClickWindow, m_lastClickMS);
@@ -576,28 +419,39 @@ std::map<int, int> const& FrameWindowAnalyzer::getWindowDistribution() const {
 int FrameWindowAnalyzer::getTotalClicks() const { return m_totalClicks; }
 
 double FrameWindowAnalyzer::getPrecisionScore() const {
-    if (m_clicks.empty() || m_levelTime <= 0.0) return 0.0;
+    if (m_levelTime <= 0.0) return 0.0;
     double totalLogProb = 0.0;
+    size_t measuredClicks = 0;
     for (auto const& click : m_clicks) {
+        if (!click.hasWindowMeasurement) continue;
         double prob = click.windowFrames / static_cast<double>(m_analysisFPS);
         prob = std::max(0.0001, std::min(1.0, prob));
         totalLogProb += std::log(prob);
+        measuredClicks++;
     }
-    return -totalLogProb / m_levelTime;
+    return measuredClicks ? -totalLogProb / m_levelTime : 0.0;
 }
 
 double FrameWindowAnalyzer::getAverageWindow() const {
-    if (m_clicks.empty()) return 0.0;
+    size_t measuredClicks = 0;
     double sum = 0.0;
-    for (auto const& c : m_clicks) sum += c.windowFrames;
-    return sum / m_clicks.size();
+    for (auto const& click : m_clicks) {
+        if (!click.hasWindowMeasurement) continue;
+        sum += click.windowFrames;
+        measuredClicks++;
+    }
+    return measuredClicks ? sum / measuredClicks : 0.0;
 }
 
 int FrameWindowAnalyzer::getTightestWindow() const {
-    if (m_clicks.empty()) return 0;
+    bool foundMeasured = false;
     int t = 999;
-    for (auto const& c : m_clicks) t = std::min(t, c.frameWindow);
-    return t;
+    for (auto const& click : m_clicks) {
+        if (!click.hasWindowMeasurement) continue;
+        t = std::min(t, click.frameWindow);
+        foundMeasured = true;
+    }
+    return foundMeasured ? t : -1;
 }
 
 // CBF

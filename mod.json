@@ -6,7 +6,7 @@
     },
     "id": "polskie.frame-window-counter",
     "name": "Polskie Frame Window Counter",
-    "version": "v3.3.2",
+    "version": "v3.3.3",
     "developer": "Polskie",
     "description": "Frame window counter overlay inspired by NaN GD and tuned for gameplay analysis.",
     "tags": ["gameplay", "interface", "utility"],

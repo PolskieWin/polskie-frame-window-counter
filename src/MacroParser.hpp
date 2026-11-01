@@ -28,6 +28,8 @@ public:
         double subFrame = 0.0;  // Fractional position within the frame
         double timeSeconds = 0.0;
         bool hasTimeSeconds = false;
+        double windowFrames = 0.0;
+        bool hasWindowFrames = false;
         bool isPress = true;    // true = press, false = release
         int player = 1;         // 1 = player1, 2 = player2
         int button = 1;         // 1 = jump, 2 = left, 3 = right

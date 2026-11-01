@@ -10,18 +10,9 @@
 using namespace geode::prelude;
 
 /**
- * FrameWindowAnalyzer v3.2 — Polskie Edition
- * 
- * 99.9% Accurate Physics Engine:
- * - Zero false FPs: eliminated artificial spam window penalties
- * - Real CPS tracking (Clicks Per Second) for fast spam & swift clicks
- * - Swift micro-click timing (hold duration <= 2 frames / 8.33ms)
- * - Exact MS duration calculation: 1 frame = 4.17ms, 2 frames = 8.33ms (at 240Hz)
- * - Complete mini gamemode physics (Mini Cube, Mini Wave, Mini Ship, etc.)
- * - Full gravity scaling (normal, inverted/flipped, and custom 2.2 gravityMod)
- * - CBF (Click Before Frame) true frame-perfect detection
- * - Orb / Ring distance-to-boundary precision (radius 30 units)
- * - Universal macro analysis (Eclipse .gdr2, MegaHack .mhr, JSON)
+ * FrameWindowAnalyzer — input recorder and measured-window statistics.
+ * It does not infer obstacle margins from click spacing or player state; absent
+ * explicit margin data remains unknown and cannot increment FP statistics.
  */
 class FrameWindowAnalyzer {
 public:
@@ -53,6 +44,7 @@ public:
         float playerY;
         int frameWindow;        // 0, 1, 2, ...
         double windowFrames;    // Continuous timing window, including sub-frames
+        bool hasWindowMeasurement;
         double msTiming;        // exact ms: e.g. 8.33ms
         bool isHold;            // press or release
         int player;             // 1 or 2
@@ -109,7 +101,7 @@ public:
     bool hasRecordedThisFrame(int player, bool isPress) const;
 
     // Ring/orb interaction tracking
-    void onRingJump(PlayerObject* player, RingObject* ring);
+    void onRingJump(PlayerObject* player, RingObject* ring, int playerNum = 1);
 
     // Macro analysis
     void analyzeMacro(MacroParser::MacroData const& macro);
@@ -128,6 +120,7 @@ public:
     // Last click / FP timing details
     int getLastClickWindow() const;
     double getLastClickWindowFrames() const;
+    bool hasLastClickWindowMeasurement() const;
     double getLastClickMS() const;
     bool isLastClickSwift() const;
     std::string getLastClickText() const;
@@ -168,9 +161,6 @@ public:
 private:
     FrameWindowAnalyzer() = default;
 
-    int calculateFrameWindow(PlayerObject* player, float dt);
-    double calculateMacroFrameWindow(double frameDelta, float macroFPS);
-    double estimateGapLeniency(GameState const& state);
     void captureGameState(PlayerObject* player);
     Gamemode detectGamemode(PlayerObject* player);
 
@@ -193,8 +183,9 @@ private:
     bool m_lastClickCBF = false;
 
     // Last click details
-    int m_lastClickWindow = 0;
+    int m_lastClickWindow = -1;
     double m_lastClickWindowFrames = 0.0;
+    bool m_lastClickHasWindowMeasurement = false;
     double m_lastClickMS = 0.0;
     bool m_lastClickSwift = false;
 
@@ -206,6 +197,8 @@ private:
     int m_totalRingHits = 0;
     bool m_lastRingFP = false;
     bool m_pendingRingHit = false;
+    int m_pendingRingPlayer = 1;
+    int m_pendingRingFrame = -1;
 
     // Timing
     double m_levelTime = 0.0;
@@ -214,7 +207,6 @@ private:
     int m_lastPressFrame = 0;
     int m_lastReleaseFrame = 0;
     int m_lastHoldDuration = 0;
-    float m_lastRingDistance = 0.0f;
     float m_levelLength = 0.0f;
     int m_currentFrame = 0;
 

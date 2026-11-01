@@ -242,6 +242,12 @@ namespace {
             else if (buttonName == "jump" || buttonName == "click" || buttonName == "primary") input.button = 1;
         }
 
+        double windowFrames = 0.0;
+        if (numberField(value, {"windowFrames", "window_frames", "marginFrames", "margin_frames"}, windowFrames) && windowFrames >= 0.0) {
+            input.windowFrames = windowFrames;
+            input.hasWindowFrames = true;
+        }
+
         double subFrame = 0.0;
         if (numberField(value, {"subTick", "subtick", "sub_frame", "subFrame", "fraction"}, subFrame)) {
             frame += subFrame;

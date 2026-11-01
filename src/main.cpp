@@ -36,7 +36,14 @@ static void recordFWCInput(CCNode* objectLayer, PlayerObject* player, bool isPre
     analyzer->onPlayerInput(isPress, player, playerNum);
     if (analyzer->getClicks().size() == clickCount) return;
 
-    FrameWindowOverlay::spawnClickMarker(objectLayer, player->getPosition(), analyzer->getLastClickWindowFrames());
+    auto worldPosition = player->convertToWorldSpace({ 0.0f, 0.0f });
+    auto markerPosition = objectLayer ? objectLayer->convertToNodeSpace(worldPosition) : worldPosition;
+    FrameWindowOverlay::spawnClickMarker(
+        objectLayer,
+        markerPosition,
+        analyzer->getLastClickWindowFrames(),
+        analyzer->hasLastClickWindowMeasurement()
+    );
     if (auto overlay = FrameWindowOverlay::get()) overlay->updateDisplay();
 }
 

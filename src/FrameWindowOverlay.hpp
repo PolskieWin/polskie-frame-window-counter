@@ -35,7 +35,7 @@ public:
     void triggerCBFFlash();
     void updateDisplay();
     void updatePosition();
-    static void spawnClickMarker(CCNode* worldLayer, CCPoint position, double windowFrames);
+    static void spawnClickMarker(CCNode* worldLayer, CCPoint position, double windowFrames, bool hasWindowMeasurement);
 
 protected:
     CCLayerColor* m_background = nullptr;

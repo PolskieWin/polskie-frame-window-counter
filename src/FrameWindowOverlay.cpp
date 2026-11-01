@@ -121,11 +121,11 @@ void FrameWindowOverlay::triggerCBFFlash() {
     m_cbfFlashTimer = 1.0f;
 }
 
-void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, double windowFrames) {
+void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, double windowFrames, bool hasWindowMeasurement) {
     if (!worldLayer || !Mod::get()->getSettingValue<bool>("show-click-rings")) return;
 
-    auto color = windowColor(windowFrames);
-    auto marker = CCLayer::create();
+    auto color = hasWindowMeasurement ? windowColor(windowFrames) : ccColor3B{ 230, 230, 230 };
+    auto marker = CCNode::create();
     if (!marker) return;
     marker->setPosition(position);
     marker->setScale(0.8f);
@@ -143,7 +143,8 @@ void FrameWindowOverlay::spawnClickMarker(CCNode* worldLayer, CCPoint position, 
     }
     marker->addChild(ring);
 
-    auto label = CCLabelBMFont::create(fmt::format("{:.1f}", windowFrames).c_str(), "bigFont.fnt");
+    auto labelText = hasWindowMeasurement ? fmt::format("{:.1f}", windowFrames) : "?";
+    auto label = CCLabelBMFont::create(labelText.c_str(), "bigFont.fnt");
     label->setScale(0.30f);
     label->setColor(color);
     label->setPosition({ 0.0f, 18.0f });
@@ -247,7 +248,8 @@ void FrameWindowOverlay::updateDisplay() {
         m_lastClickLabel->setVisible(showLastMS);
         if (showLastMS) {
             m_lastClickLabel->setString(analyzer->getLastClickText().c_str());
-            if (analyzer->getLastClickWindow() <= 1 && analyzer->getTotalClicks() > 0) {
+            if (analyzer->hasLastClickWindowMeasurement() &&
+                analyzer->getLastClickWindow() >= 0 && analyzer->getLastClickWindow() <= 1) {
                 m_lastClickLabel->setColor({ 255, 255, 0 }); // Bright Yellow Frame Perfect!
             } else {
                 m_lastClickLabel->setColor({ 245, 245, 245 });
@@ -281,11 +283,15 @@ void FrameWindowOverlay::updateDisplay() {
         m_msLabel->setVisible(true);
         m_hzLabel->setVisible(true);
 
-        double ms = analyzer->getLastClickMS();
-        double effHz = (ms > 0.0) ? (1000.0 / ms) : 0.0;
-
-        m_msLabel->setString(fmt::format("{:.2f}ms", ms).c_str());
-        m_hzLabel->setString(fmt::format("{:.0f}Hz", effHz).c_str());
+        if (analyzer->hasLastClickWindowMeasurement()) {
+            double ms = analyzer->getLastClickMS();
+            double effHz = (ms > 0.0) ? (1000.0 / ms) : 0.0;
+            m_msLabel->setString(fmt::format("{:.2f}ms", ms).c_str());
+            m_hzLabel->setString(fmt::format("{:.0f}Hz", effHz).c_str());
+        } else {
+            m_msLabel->setString("--ms");
+            m_hzLabel->setString("--Hz");
+        }
     } else {
         m_msLabel->setVisible(false);
         m_hzLabel->setVisible(false);
