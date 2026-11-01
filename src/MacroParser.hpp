@@ -10,8 +10,9 @@ using namespace geode::prelude;
  * MacroParser
  * 
  * Comprehensive universal parser for Geometry Dash macros & replays:
- * - Eclipse Menu (.gdr2) LEB128 binary, MegaHack (.mhr) binary, and ReplayBot (.rply) binary
- * - GDReplay (.gdr), Silico (.slc), TasBot (.tcm), and yBot / zBot (.ybot) JSON event streams
+ * - GDReplay / Eclipse (.gdr, .gdr2) LEB128 binary, JSON, and MessagePack
+ * - MegaHack (.mhr) binary/JSON and ReplayBot (.rply) binary
+ * - Silico (.slc), TasBot (.tcm), and yBot / zBot (.ybot) JSON event streams
  * - MegaHack Replay JSON (.mhr.json, .mhr)
  * - xdBot (.txt / .csv / .json)
  * - xBot (.txt / .csv)
@@ -45,7 +46,7 @@ public:
 
     enum class MacroFormat {
         ECLIPSE_GDR2,   // Eclipse Menu .gdr2
-        GDREPLAY,        // GDReplay .gdr JSON event stream
+        GDREPLAY,        // GDReplay .gdr JSON or MessagePack event stream
         SILICO,          // Silico .slc event stream
         TASBOT_TCM,      // TasBot .tcm event stream
         YBOT,            // yBot / zBot .ybot action stream

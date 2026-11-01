@@ -14,6 +14,8 @@ endif()
 # Add Geode SDK
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode_sdk)
 
+CPMAddPackage("gh:nlohmann/json#v3.11.3")
+
 # Define the mod library target
 add_library(${PROJECT_NAME} SHARED
     src/main.cpp
@@ -28,3 +30,4 @@ add_library(${PROJECT_NAME} SHARED
 setup_geode_mod(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)
+target_link_libraries(${PROJECT_NAME} PRIVATE nlohmann_json::nlohmann_json)

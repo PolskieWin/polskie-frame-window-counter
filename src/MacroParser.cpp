@@ -8,7 +8,9 @@
 #include <cmath>
 #include <initializer_list>
 #include <limits>
+#include <optional>
 #include <Geode/utils/file.hpp>
+#include <nlohmann/json.hpp>
 
 namespace fs = std::filesystem;
 
@@ -69,9 +71,13 @@ namespace {
 
         uint64_t varint() {
             uint64_t val = 0;
-            for (int shift = 0; shift < 64; shift += 7) {
+            for (unsigned int shift = 0; shift < 64; shift += 7) {
                 if (!need(1)) return val;
                 uint8_t b = data[pos++];
+                if (shift == 63 && (b & 0xFE) != 0) {
+                    bad = true;
+                    return 0;
+                }
                 val |= static_cast<uint64_t>(b & 0x7F) << shift;
                 if (!(b & 0x80)) return val;
             }
@@ -218,7 +224,7 @@ namespace {
         if (numberField(value, {"player", "playerIndex", "player_index", "playerNum", "player_num"}, player)) {
             input.player = (player == 2.0 || player == 1.0) ? static_cast<int>(player) : (player == 0.0 ? 1 : 2);
         } else {
-            for (auto key : {"p2", "player2", "Player 2"}) {
+            for (auto key : {"2p", "p2", "player2", "Player 2"}) {
                 auto playerTwo = value[key].asBool();
                 if (playerTwo && playerTwo.unwrap()) {
                     input.player = 2;
@@ -276,13 +282,26 @@ namespace {
         MacroParser::MacroData data;
         data.name = fs::path(path).filename().string();
         auto text = readFileText(path);
-        auto parsed = matjson::parse(text);
-        if (!parsed) {
-            data.error = formatName + " binary/structured payload is not a supported JSON event stream";
+        std::optional<Json> parsedRoot;
+        auto parsedText = matjson::parse(text);
+        if (parsedText) {
+            parsedRoot = parsedText.unwrap();
+        } else {
+            auto bytes = readFileBytes(path);
+            try {
+                auto messagePack = nlohmann::json::from_msgpack(bytes.begin(), bytes.end(), true, false);
+                if (!messagePack.is_discarded()) {
+                    auto converted = matjson::parse(messagePack.dump());
+                    if (converted) parsedRoot = converted.unwrap();
+                }
+            } catch (...) {}
+        }
+        if (!parsedRoot) {
+            data.error = formatName + " file is not valid JSON or MessagePack";
             return data;
         }
 
-        auto root = parsed.unwrap();
+        auto const& root = *parsedRoot;
         auto metadata = root["metadata"];
         if (metadata.isNull()) metadata = root["meta"];
         data.author = stringField(root, {"author", "creator"});
@@ -453,7 +472,7 @@ MacroParser::MacroData MacroParser::parseYBot(std::string const& path) {
 MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     MacroData data;
     data.name = fs::path(path).stem().string();
-    data.botName = "Eclipse Menu (GDR2)";
+    data.botName = "GDReplay / Eclipse GDR2";
 
     auto bytes = readFileBytes(path);
     if (bytes.size() < 4 || bytes[0] != 'G' || bytes[1] != 'D' || bytes[2] != 'R') {
@@ -461,7 +480,7 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     }
 
     ByteReader reader(bytes, 3);
-    reader.varint(); // Format version
+    auto version = reader.varint();
 
     auto readVarString = [&reader]() {
         auto length = reader.varint();
@@ -475,8 +494,8 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     auto inputTag = readVarString();
     data.author = readVarString();
     readVarString(); // Description
-    reader.be<float>(); // Duration
-    reader.varint(); // Game version
+    reader.be<float>(); // Duration in seconds
+    auto gameVersion = reader.varint();
 
     double recordFPS = reader.be<double>();
     data.recordFPS = (std::isfinite(recordFPS) && recordFPS >= 30.0 && recordFPS <= 2000.0)
@@ -489,10 +508,17 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     bool platformer = reader.varint() != 0;
     auto botName = readVarString();
     if (!botName.empty()) data.botName = botName;
-    reader.varint(); // Bot version
-    reader.varint(); // Level ID
+    auto botVersion = reader.varint();
+    auto levelId = reader.varint();
     auto levelName = readVarString();
     if (!levelName.empty()) data.name = levelName;
+    data.gameVersion = std::to_string(gameVersion);
+
+    if (reader.bad || version == 0 || botVersion > std::numeric_limits<int>::max() ||
+        levelId > std::numeric_limits<uint32_t>::max()) {
+        data.error = "Invalid GDReplay header";
+        return data;
+    }
 
     auto extensionSize = reader.varint();
     if (reader.bad || extensionSize > reader.left()) {
@@ -509,8 +535,8 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     for (uint64_t death = 0; death < deathCount; death++) reader.varint();
 
     auto inputCount = reader.varint();
-    auto playerOneInputsLeft = reader.varint();
-    if (reader.bad || inputCount > reader.left() || playerOneInputsLeft > inputCount) {
+    auto playerOneInputCount = reader.varint();
+    if (reader.bad || inputCount > reader.left() || playerOneInputCount > inputCount) {
         data.error = "Corrupted or truncated GDR2 input header";
         return data;
     }
@@ -536,7 +562,7 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
         input.frame = static_cast<int>(frame);
         input.subFrame = 0.0;
         input.isPress = (packed & 1) != 0;
-        input.player = playerOneInputsLeft > 0 ? 1 : 2;
+        input.player = index < playerOneInputCount ? 1 : 2;
         input.button = platformer ? static_cast<int>((packed >> 1) & 3) : 1;
         if (input.button == 0) input.button = 1;
         input.timeSeconds = input.frame / static_cast<double>(data.recordFPS);
@@ -553,7 +579,7 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
         }
 
         previousFrame = frame;
-        if (playerOneInputsLeft > 0 && --playerOneInputsLeft == 0) previousFrame = 0;
+        if (index + 1 == playerOneInputCount) previousFrame = 0;
     }
 
     data.valid = !reader.bad && data.inputs.size() == inputCount && !data.inputs.empty();

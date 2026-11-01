@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.3.2 — GDReplay Binary and MessagePack Support
+
+- Added raw GDReplay GDR binary decoding for metadata, varint input events, player split, platformer buttons, and extension records.
+- Added MessagePack decoding for GDReplay event objects while retaining JSON support.
+- Added overflow and truncation checks for GDR binary input data.
+- Binary variants of `.slc`, `.tcm`, and `.ybot` remain unsupported without format specifications.
+
 ## v3.3.1 — Restore Binary Replay Decoders
 
 - Restored Eclipse GDR2 LEB128 parsing with metadata, player split, button state, and frame timing.
