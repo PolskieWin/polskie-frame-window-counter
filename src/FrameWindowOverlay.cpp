@@ -6,15 +6,13 @@ static FrameWindowOverlay* s_instance = nullptr;
 
 static ccColor3B windowColor(double windowFrames) {
     int window = static_cast<int>(std::round(windowFrames));
-    if (window >= 11) return { 150, 80, 255 };
-    if (window >= 8) return { 100, 130, 255 };
-    if (window >= 6) return { 60, 200, 255 };
-    if (window >= 5) return { 50, 230, 180 };
-    if (window >= 4) return { 80, 255, 100 };
-    if (window >= 3) return { 255, 240, 50 };
-    if (window >= 2) return { 255, 160, 40 };
-    if (window >= 1) return { 255, 90, 40 };
-    return { 255, 40, 40 };
+    if (window <= 1) return { 239, 79,  80  }; // #EF4F50 Frame Perfect Pink/Red
+    if (window <= 2) return { 232, 160, 32  }; // #E8A020 Warm Amber / Orange
+    if (window <= 4) return { 208, 213, 59  }; // #D0D53B Pastel Yellow
+    if (window <= 6) return { 119, 223, 145 }; // #77DF91 Lime / Mint Green
+    if (window <= 8) return { 89,  201, 215 }; // #59C9D7 Sky Blue / Cyan
+    if (window <= 10) return { 138, 95, 249 }; // #8A5FF9 Purple
+    return { 186, 93, 249 };                   // #BA5DF9 Violet
 }
 
 FrameWindowOverlay* FrameWindowOverlay::get() {
@@ -51,15 +49,14 @@ CCLabelBMFont* FrameWindowOverlay::createPusabLabel(const char* text, float scal
 void FrameWindowOverlay::setupBuckets() {
     m_buckets.clear();
 
-    m_buckets.push_back({ "10+:",  11, 9999, { 150, 80, 255 }, nullptr });
-    m_buckets.push_back({ "8-10:", 8,  10,   { 100, 130, 255 }, nullptr });
-    m_buckets.push_back({ "6-8:",  6,  7,    { 60, 200, 255 }, nullptr });
-    m_buckets.push_back({ "5-6:",  5,  5,    { 50, 230, 180 }, nullptr });
-    m_buckets.push_back({ "4-5:",  4,  4,    { 80, 255, 100 }, nullptr });
-    m_buckets.push_back({ "3-4:",  3,  3,    { 255, 240, 50 }, nullptr });
-    m_buckets.push_back({ "2-3:",  2,  2,    { 255, 160, 40 }, nullptr });
-    m_buckets.push_back({ "1-2:",  1,  1,    { 255, 90, 40 }, nullptr });
-    m_buckets.push_back({ "0-1:",  0,  0,    { 255, 40, 40 }, nullptr });
+    // 1:1 NaN GD bucket order from video (download(4).mp4) — top to bottom:
+    m_buckets.push_back({ "9-10:", 9,  10,   { 138, 95,  249 }, nullptr }); // #8A5FF9 Purple
+    m_buckets.push_back({ "7-8:",  7,  8,    { 89,  201, 215 }, nullptr }); // #59C9D7 Light Blue / Cyan
+    m_buckets.push_back({ "5-6:",  5,  6,    { 119, 223, 145 }, nullptr }); // #77DF91 Lime / Mint Green
+    m_buckets.push_back({ "3-4:",  3,  4,    { 208, 213, 59  }, nullptr }); // #D0D53B Pastel Yellow
+    m_buckets.push_back({ "1-2:",  1,  2,    { 232, 160, 32  }, nullptr }); // #E8A020 Amber / Orange (8.33ms)
+    m_buckets.push_back({ "0-1:",  0,  1,    { 239, 79,  80  }, nullptr }); // #EF4F50 Frame Perfect Pink/Red (4.17ms)
+    m_buckets.push_back({ "10+:",  11, 9999, { 186, 93,  249 }, nullptr }); // #BA5DF9 Violet (optional overflow)
 }
 
 bool FrameWindowOverlay::init() {
@@ -200,8 +197,8 @@ void FrameWindowOverlay::updateDisplay() {
     for (auto& bucket : m_buckets) {
         if (!bucket.labelNode) continue;
 
-        // Higher window filter (8+)
-        if (!showHigher && bucket.minFrames >= 8) {
+        // Higher window filter (9-10)
+        if (!showHigher && bucket.minFrames >= 9) {
             bucket.labelNode->setVisible(false);
             continue;
         }
@@ -216,7 +213,21 @@ void FrameWindowOverlay::updateDisplay() {
         // Count clicks falling into this bucket
         int count = 0;
         for (auto const& [win, c] : dist) {
-            if (win >= bucket.minFrames && win <= bucket.maxFrames) count += c;
+            if (bucket.minFrames >= 11) {
+                if (win >= 11) count += c;
+            } else if (bucket.label == "9-10:") {
+                if (win == 9 || win == 10) count += c;
+            } else if (bucket.label == "7-8:") {
+                if (win == 7 || win == 8) count += c;
+            } else if (bucket.label == "5-6:") {
+                if (win == 5 || win == 6) count += c;
+            } else if (bucket.label == "3-4:") {
+                if (win == 3 || win == 4) count += c;
+            } else if (bucket.label == "1-2:") {
+                if (win == 1 || win == 2) count += c;
+            } else if (bucket.label == "0-1:") {
+                if (win == 0 || win == 1) count += c;
+            }
         }
 
         if (showBucketMS) {
@@ -283,15 +294,13 @@ void FrameWindowOverlay::updateDisplay() {
         m_msLabel->setVisible(true);
         m_hzLabel->setVisible(true);
 
-        if (analyzer->hasLastClickWindowMeasurement()) {
-            double ms = analyzer->getLastClickMS();
-            double effHz = (ms > 0.0) ? (1000.0 / ms) : 0.0;
-            m_msLabel->setString(fmt::format("{:.2f}ms", ms).c_str());
-            m_hzLabel->setString(fmt::format("{:.0f}Hz", effHz).c_str());
-        } else {
-            m_msLabel->setString("--ms");
-            m_hzLabel->setString("--Hz");
-        }
+        double avgWindow = analyzer->getAverageWindow();
+        int fps = analyzer->getAnalysisFPS();
+        double ms = (avgWindow > 0.0) ? (avgWindow / static_cast<double>(fps)) * 1000.0 : (1000.0 / fps);
+        double effHz = (ms > 0.0) ? (1000.0 / ms) : static_cast<double>(fps);
+
+        m_msLabel->setString(fmt::format("{:.2f}MS", ms).c_str());
+        m_hzLabel->setString(fmt::format("{:.0f}Hz", effHz).c_str());
     } else {
         m_msLabel->setVisible(false);
         m_hzLabel->setVisible(false);

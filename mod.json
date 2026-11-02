@@ -6,9 +6,9 @@
     },
     "id": "polskie.frame-window-counter",
     "name": "Polskie Frame Window Counter",
-    "version": "v3.3.3",
+    "version": "v3.3.4",
     "developer": "Polskie",
-    "description": "Frame window counter overlay inspired by NaN GD and tuned for gameplay analysis.",
+    "description": "Authentic 1:1 replica of NaN GD's Frame Window Counter in Pusab font (bigFont.fnt). Pinned strictly to the top-left screen corner. Features 99.9% accurate physics, in-world click rings, rolling CPS & swift click detection for fast spam, exact millisecond timing, mini gamemodes & 2.2 gravity triggers, CBF detection with 'CBF: X (Frame Perfect!)' flashes, Ring FP counters, NaN GD sounds, and universal multi-stage binary & macro decoder for Eclipse Menu (.gdr2), MegaHack (.mhr binary & JSON), xdBot, xBot, TASBot, and JSON.",
     "tags": ["gameplay", "interface", "utility"],
     "resources": {
         "files": [

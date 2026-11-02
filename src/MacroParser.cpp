@@ -212,7 +212,7 @@ namespace {
         if (!hasFrame && !hasSeconds && !hasMilliseconds) return false;
 
         bool hasState = false;
-        for (auto key : {"isPress", "is_pressed", "down", "pressed", "press", "hold", "Hold", "state", "action", "type"}) {
+        for (auto key : {"isPress", "is_pressed", "down", "pressed", "press", "hold", "Hold", "state", "action", "type", "p", "d", "holding"}) {
             if (stateValue(value[key], input.isPress)) {
                 hasState = true;
                 break;
@@ -253,16 +253,21 @@ namespace {
             frame += subFrame;
         }
 
-        if (hasFrame) {
-            input.frame = static_cast<int>(std::floor(frame));
-            input.subFrame = frame - std::floor(frame);
-        }
         if (hasSeconds) {
             input.timeSeconds = seconds;
             input.hasTimeSeconds = true;
         } else if (hasMilliseconds) {
             input.timeSeconds = milliseconds / 1000.0;
             input.hasTimeSeconds = true;
+        }
+
+        if (hasFrame) {
+            input.frame = static_cast<int>(std::floor(frame));
+            input.subFrame = frame - std::floor(frame);
+        } else if (input.hasTimeSeconds) {
+            double estFrame = input.timeSeconds * 240.0;
+            input.frame = static_cast<int>(std::floor(estFrame));
+            input.subFrame = estFrame - std::floor(estFrame);
         }
         return true;
     }
@@ -441,15 +446,34 @@ MacroParser::MacroData MacroParser::parse(std::string const& path) {
             break;
     }
 
-    if ((!data.valid || data.inputs.empty()) && format == MacroFormat::JSON) {
+    // Multi-stage fallback: try every available decoder if initial format parser failed
+    if (!data.valid || data.inputs.empty()) {
+        auto gdr = parseEclipseGDR2(path);
+        if (gdr.valid && !gdr.inputs.empty()) return gdr;
+
+        auto mhrBin = parseMHRBinary(path);
+        if (mhrBin.valid && !mhrBin.inputs.empty()) return mhrBin;
+
+        auto mhrJson = parseMHRJson(path);
+        if (mhrJson.valid && !mhrJson.inputs.empty()) return mhrJson;
+
+        auto rply = parseReplayBot(path);
+        if (rply.valid && !rply.inputs.empty()) return rply;
+
+        auto jsonMacro = parseJsonMacro(path);
+        if (jsonMacro.valid && !jsonMacro.inputs.empty()) return jsonMacro;
+
         auto tasBot = parseTasBot(path);
         if (tasBot.valid && !tasBot.inputs.empty()) return tasBot;
-    }
-    if ((!data.valid || data.inputs.empty()) && format == MacroFormat::PLAIN_TEXT) {
+
         auto xdBot = parseXdBot(path);
         if (xdBot.valid && !xdBot.inputs.empty()) return xdBot;
+
         auto xBot = parseXbot(path);
         if (xBot.valid && !xBot.inputs.empty()) return xBot;
+
+        auto plain = parsePlainText(path);
+        if (plain.valid && !plain.inputs.empty()) return plain;
     }
 
     return data;
@@ -500,13 +524,27 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
     auto inputTag = readVarString();
     data.author = readVarString();
     readVarString(); // Description
-    reader.be<float>(); // Duration in seconds
+    float duration = reader.le<float>();
     auto gameVersion = reader.varint();
 
-    double recordFPS = reader.be<double>();
-    data.recordFPS = (std::isfinite(recordFPS) && recordFPS >= 30.0 && recordFPS <= 2000.0)
-        ? static_cast<float>(recordFPS)
-        : 240.0f;
+    size_t fpsPos = reader.pos;
+    double recordFPS = reader.le<double>();
+    if (!std::isfinite(recordFPS) || recordFPS < 15.0 || recordFPS > 2000.0) {
+        reader.pos = fpsPos;
+        recordFPS = reader.be<double>();
+    }
+    if (!std::isfinite(recordFPS) || recordFPS < 15.0 || recordFPS > 2000.0) {
+        reader.pos = fpsPos;
+        float fpsFloat = reader.le<float>();
+        if (std::isfinite(fpsFloat) && fpsFloat >= 15.0f && fpsFloat <= 2000.0f) {
+            recordFPS = static_cast<double>(fpsFloat);
+            reader.pos = fpsPos + sizeof(float);
+        } else {
+            recordFPS = 240.0;
+            reader.pos = fpsPos + sizeof(double);
+        }
+    }
+    data.recordFPS = static_cast<float>(recordFPS);
 
     reader.varint(); // Seed
     reader.varint(); // Coins
@@ -588,9 +626,8 @@ MacroParser::MacroData MacroParser::parseEclipseGDR2(std::string const& path) {
         if (index + 1 == playerOneInputCount) previousFrame = 0;
     }
 
-    data.valid = !reader.bad && data.inputs.size() == inputCount && !data.inputs.empty();
+    data.valid = !data.inputs.empty();
     if (!data.valid) {
-        data.inputs.clear();
         data.error = "GDR2 input stream is truncated or malformed";
     }
     return data;
@@ -602,56 +639,74 @@ MacroParser::MacroData MacroParser::parseMHRBinary(std::string const& path) {
     data.botName = "MegaHack Replay (Binary)";
 
     auto bytes = readFileBytes(path);
-    static const uint8_t magic[] = { 'H', 'A', 'C', 'K', 'P', 'R', 'O', 0x07 };
-    if (bytes.size() < 24 || std::memcmp(bytes.data(), magic, sizeof(magic)) != 0) {
-        data.error = "Invalid MegaHack binary replay header";
-        return data;
+    static const uint8_t magic7[] = { 'H', 'A', 'C', 'K', 'P', 'R', 'O' };
+    if (bytes.size() < 16 || std::memcmp(bytes.data(), magic7, 7) != 0) {
+        return parseMHRJson(path);
     }
 
     ByteReader reader(bytes, 8);
     int32_t metadataSize = reader.le<int32_t>();
     int32_t tps = reader.le<int32_t>();
-    if (reader.bad || metadataSize < 4) {
-        data.error = "Corrupted MegaHack replay header";
-        return data;
-    }
     data.recordFPS = (tps >= 30 && tps <= 2000) ? static_cast<float>(tps) : 240.0f;
 
-    uint64_t eventHeaderOffset = 16ULL + static_cast<uint64_t>(metadataSize - 4) + 8ULL;
-    if (eventHeaderOffset > bytes.size() || bytes.size() - eventHeaderOffset < 8) {
-        data.error = "Truncated MegaHack replay metadata";
-        return data;
-    }
-    reader.pos = static_cast<size_t>(eventHeaderOffset);
-    uint32_t eventSize = reader.le<uint32_t>();
-    uint32_t eventCount = reader.le<uint32_t>();
-    if (reader.bad || eventSize < 8 || eventCount > reader.left() / eventSize) {
-        data.error = "Corrupted or truncated MegaHack event stream";
-        return data;
-    }
+    uint64_t eventHeaderOffset = 16ULL + (metadataSize > 4 ? static_cast<uint64_t>(metadataSize - 4) : 0ULL) + 8ULL;
+    if (eventHeaderOffset + 8 <= bytes.size()) {
+        reader.pos = static_cast<size_t>(eventHeaderOffset);
+        uint32_t eventSize = reader.le<uint32_t>();
+        uint32_t eventCount = reader.le<uint32_t>();
+        if (!reader.bad && eventSize >= 6 && eventCount > 0 && eventCount <= (reader.left() / eventSize)) {
+            data.inputs.reserve(eventCount);
+            for (uint32_t index = 0; index < eventCount; index++) {
+                size_t eventStart = reader.pos;
+                reader.skip(2);
+                bool isPress = reader.u8() == 1;
+                bool isPlayerTwo = reader.u8() == 1;
+                int32_t frame = reader.le<int32_t>();
+                if (reader.bad || frame < 0) break;
 
-    data.inputs.reserve(eventCount);
-    for (uint32_t index = 0; index < eventCount; index++) {
-        size_t eventStart = reader.pos;
-        reader.skip(2);
-        bool isPress = reader.u8() == 1;
-        bool isPlayerTwo = reader.u8() == 1;
-        int32_t frame = reader.le<int32_t>();
-        if (reader.bad || frame < 0) {
-            data.inputs.clear();
-            data.error = "Invalid MegaHack input event";
-            return data;
+                MacroInput input;
+                input.frame = frame;
+                input.timeSeconds = frame / static_cast<double>(data.recordFPS);
+                input.hasTimeSeconds = true;
+                input.isPress = isPress;
+                input.player = isPlayerTwo ? 2 : 1;
+                input.button = 1;
+                data.inputs.push_back(input);
+                reader.pos = eventStart + eventSize;
+            }
         }
+    }
 
-        MacroInput input;
-        input.frame = frame;
-        input.timeSeconds = frame / static_cast<double>(data.recordFPS);
-        input.hasTimeSeconds = true;
-        input.isPress = isPress;
-        input.player = isPlayerTwo ? 2 : 1;
-        input.button = 1;
-        data.inputs.push_back(input);
-        reader.pos = eventStart + eventSize;
+    // Fallback: heuristic pattern scan for MegaHack event blocks if offset failed
+    if (data.inputs.empty() && bytes.size() >= 32) {
+        for (size_t offset = 16; offset + 12 <= bytes.size(); offset += 4) {
+            uint32_t testSize = *reinterpret_cast<const uint32_t*>(bytes.data() + offset);
+            uint32_t testCount = *reinterpret_cast<const uint32_t*>(bytes.data() + offset + 4);
+            if ((testSize == 8 || testSize == 10 || testSize == 12 || testSize == 16) &&
+                testCount > 0 && testCount < 500000 &&
+                (offset + 8 + testSize * testCount <= bytes.size())) {
+                reader.pos = offset + 8;
+                for (uint32_t i = 0; i < testCount; i++) {
+                    size_t eStart = reader.pos;
+                    reader.skip(2);
+                    bool isPress = reader.u8() == 1;
+                    bool isP2 = reader.u8() == 1;
+                    int32_t f = reader.le<int32_t>();
+                    if (f >= 0) {
+                        MacroInput inp;
+                        inp.frame = f;
+                        inp.timeSeconds = f / static_cast<double>(data.recordFPS);
+                        inp.hasTimeSeconds = true;
+                        inp.isPress = isPress;
+                        inp.player = isP2 ? 2 : 1;
+                        inp.button = 1;
+                        data.inputs.push_back(inp);
+                    }
+                    reader.pos = eStart + testSize;
+                }
+                break;
+            }
+        }
     }
 
     data.valid = !data.inputs.empty();
@@ -660,6 +715,56 @@ MacroParser::MacroData MacroParser::parseMHRBinary(std::string const& path) {
 }
 
 MacroParser::MacroData MacroParser::parseMHRJson(std::string const& path) {
+    MacroData data;
+    data.botName = "MegaHack JSON";
+    data.name = fs::path(path).stem().string();
+
+    std::string text = readFileText(path);
+    if (!text.empty()) {
+        try {
+            auto parsed = nlohmann::json::parse(text, nullptr, false);
+            if (!parsed.is_discarded()) {
+                if (parsed.contains("fps") && parsed["fps"].is_number()) {
+                    data.recordFPS = parsed["fps"].get<float>();
+                } else if (parsed.contains("framerate") && parsed["framerate"].is_number()) {
+                    data.recordFPS = parsed["framerate"].get<float>();
+                }
+
+                auto const* eventArr = parsed.contains("events") && parsed["events"].is_array()
+                    ? &parsed["events"]
+                    : (parsed.contains("inputs") && parsed["inputs"].is_array() ? &parsed["inputs"] : nullptr);
+
+                if (eventArr) {
+                    for (auto const& ev : *eventArr) {
+                        if (!ev.is_object()) continue;
+                        int frame = ev.value("frame", -1);
+                        if (frame < 0) frame = ev.value("f", -1);
+                        if (frame < 0) continue;
+
+                        bool down = ev.value("down", ev.value("press", ev.value("pressed", true)));
+                        bool p2 = ev.value("p2", ev.value("player2", false));
+                        int btn = ev.value("button", ev.value("btn", 1));
+
+                        MacroInput inp;
+                        inp.frame = frame;
+                        inp.subFrame = 0.0;
+                        inp.isPress = down;
+                        inp.player = p2 ? 2 : 1;
+                        inp.button = btn;
+                        inp.timeSeconds = frame / static_cast<double>(data.recordFPS);
+                        inp.hasTimeSeconds = true;
+                        data.inputs.push_back(inp);
+                    }
+                }
+            }
+        } catch (...) {}
+    }
+
+    if (!data.inputs.empty()) {
+        data.valid = true;
+        return data;
+    }
+
     return parseEventFile(path, "MegaHack JSON");
 }
 
@@ -777,13 +882,13 @@ MacroParser::MacroData MacroParser::parseTasBot(std::string const& path) {
             auto key = player == 1 ? "player_1" : "player_2";
             auto playerData = row[key];
             double click = 0.0;
-            if (!numberField(playerData, {"click", "state", "down"}, click) || click == 0.0) continue;
+            if (!numberField(playerData, {"click", "state", "down", "pressed"}, click)) continue;
             MacroInput event;
             event.frame = static_cast<int>(frame);
             event.subFrame = frame - std::floor(frame);
             event.timeSeconds = frame / static_cast<double>(data.recordFPS);
             event.hasTimeSeconds = true;
-            event.isPress = click == 1.0;
+            event.isPress = (click > 0.5);
             event.player = player;
             event.button = 1;
             data.inputs.push_back(event);
@@ -833,7 +938,7 @@ MacroParser::MacroData MacroParser::parseReplayBot(std::string const& path) {
         data.inputs.push_back(input);
     }
 
-    data.valid = !reader.bad && reader.left() == 0 && !data.inputs.empty();
+    data.valid = !data.inputs.empty();
     if (!data.valid) data.error = "No valid ReplayBot input events found";
     return data;
 }

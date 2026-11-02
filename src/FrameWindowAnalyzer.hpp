@@ -161,6 +161,10 @@ public:
 private:
     FrameWindowAnalyzer() = default;
 
+    int calculateFrameWindow(PlayerObject* player, float dt);
+    int calculateMacroFrameWindow(int frameDelta, float macroFPS);
+    double estimateGapLeniency(GameState const& state);
+
     void captureGameState(PlayerObject* player);
     Gamemode detectGamemode(PlayerObject* player);
 

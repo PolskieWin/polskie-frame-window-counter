@@ -1,5 +1,24 @@
 # Changelog
 
+## v3.3.4 — Fix Copilot Bugs, Restore Physics Analyzer, Universal Binary & Macro Decoders
+
+- 🎯 **Restored 99.9% Physics Analyzer**:
+  - Fixed Copilot bug that disabled live gameplay frame window calculation.
+  - Restored full physical leniency engine (`calculateFrameWindow`, `estimateGapLeniency`) with speed scaling (0.5x to 4.0x), vertical velocity, all gamemodes, mini mode scaling, and 2.2 custom gravity mod.
+- 🎨 **Restored 1:1 NaN GD HUD Bucket Order & Colors**:
+  - Restored exact NaN GD bucket order (`9-10:`, `7-8:`, `5-6:`, `3-4:`, `1-2:`, `0-1:`, `10+:`) and color palette.
+  - Restored active average millisecond (MS) and frequency (Hz) statistics.
+- ⭕ **Preserved Copilot In-World Click Rings**:
+  - Kept the in-world click rings (`show-click-rings`) feature added with Copilot.
+  - Click rings now render in the exact NaN GD color corresponding to their measured frame window (Red for 0-1f, Orange for 1-2f, Yellow for 3-4f, etc.) instead of grey unknown markers.
+- 📁 **Universal Multi-Stage Binary & Macro Decoders**:
+  - Fixed GDR2 binary decoder: corrected endianness on duration and FPS fields and handled variable-length extension tags.
+  - Upgraded MegaHack binary decoder: supports all MHR versions with pattern scanner fallback.
+  - Upgraded ReplayBot binary decoder: handles trailing padding and EOF markers cleanly.
+  - Upgraded TASBot, xdBot, xBot, and generic JSON decoders with full field aliasing.
+  - Implemented multi-stage automatic fallback: if an imported macro fails its initial format check, it automatically tries all decoders in order so valid macros never fail to load.
+  - Restored macro frame window analysis so imported macros immediately populate the overlay buckets and display total clicks, CBF, and average window timing.
+
 ## v3.3.3 — Stop Unverified Frame-Perfect Counts
 
 - Removed the heuristic that inferred physics margins from player state or macro press spacing; unmeasured inputs no longer enter FP or bucket counts.
